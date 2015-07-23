@@ -1,5 +1,3 @@
-test feature-chonho1
-test feature-chonho1 add rnnlm
 ##Apache SINGA
 
 Distributed deep learning system
