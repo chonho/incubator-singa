@@ -64,6 +64,7 @@ void create_shard(const char* input, const char* output) {
   char delim[] = ".,':;";
   
   while (in >> word) {
+    // TODO take care of 'article', 'plural', etc of words
     std::size_t pos = word.find_first_of(delim);
     ++wordmap[(pos==string::npos) ? word : word.substr(0,pos)]; 
     ++nwords;
