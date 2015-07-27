@@ -25,7 +25,7 @@ create:
 		mkdir -p class_shard; \
 		mkdir -p vocab_shard; \
 		mkdir -p word_shard; cd ..; \
-	done	
+	done
 	./create_shard.bin $(dirname)/train rnnlm_train_shard $(numclass)
 	./create_shard.bin $(dirname)/test rnnlm_test_shard -1
 	./create_shard.bin $(dirname)/valid rnnlm_valid_shard -1

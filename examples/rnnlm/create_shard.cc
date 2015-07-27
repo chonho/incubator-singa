@@ -23,7 +23,6 @@
 
 using singa::DataShard;
 
-//using StrIntMap = std::map<std::string, int, std::greater<std::string> >;
 using StrIntMap = std::map<std::string, int>;
 using StrIntPair = std::pair<std::string, int>;
 
