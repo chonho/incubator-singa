@@ -154,13 +154,13 @@ message LayerProto {
     kTanh = 14;
 	
 	//For implementation of RNNLM application
-	kRnnlmComputation = 17;
-	kRnnlmSigmoid = 18;
-	kRnnlmInnerproduct = 19;
-	kRnnlmWordinput = 20;
-	kRnnlmWordparser = 21;
-	kRnnlmClassparser = 22;
-	kRnnlmData = 23;	
+	kRnnlmComputation = 71;
+	kRnnlmSigmoid = 72;
+	kRnnlmInnerproduct = 73;
+	kRnnlmWordinput = 74;
+	kRnnlmWordParser = 75;
+	kRnnlmClassParser = 76;
+	kRnnlmData = 77;	
   }
   // source layer names
   repeated string srclayers = 3;
@@ -224,9 +224,9 @@ message LayerProto {
   // 4-configuration for RnnlmWordinput layer
   optional RnnlmWordinputProto rnnlmwordinput_conf = 66;
   // 5-configuration for RnnlmWordparser layer
-  optional RnnlmWordparserProto rnnlmwordparser_conf = 67;
+  //optional RnnlmWordparserProto rnnlmwordparser_conf = 67;
   // 6-configuration for RnnlmClassparser layer
-  optional RnnlmClassparserProto rnnlmclassparser_conf = 68;
+  //optional RnnlmClassparserProto rnnlmclassparser_conf = 68;
   // 7-configuration for RnnlmData layer
   optional RnnlmDataProto rnnlmdata_conf = 69;
 }

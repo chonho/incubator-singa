@@ -14,6 +14,7 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include <algorithm>
 
 #include "utils/data_shard.h"
 #include "utils/common.h"
@@ -22,11 +23,11 @@
 
 using singa::DataShard;
 
+//using StrIntMap = std::map<std::string, int, std::greater<std::string> >;
 using StrIntMap = std::map<std::string, int>;
 using StrIntPair = std::pair<std::string, int>;
 
-void doClusterForTrainMode(const char *input, const char *classShardPath, const char *vocabShardPath,
-                           int nclass, StrIntMap& wordIdxMap, StrIntMap& wordClassIdxMap) {
+void doClusterForTrainMode(const char *input, const char *output, int nclass, StrIntMap& wordIdxMap, StrIntMap& wordClassIdxMap) {
     // init
     wordIdxMap.clear();
     wordClassIdxMap.clear();
@@ -49,11 +50,11 @@ void doClusterForTrainMode(const char *input, const char *classShardPath, const 
     for (auto& it : wordFreqMap) {
         sumFreq += it.second;
     }
-
+    
     // index words after sorting
     std::vector<StrIntPair> wordFreqSortedVec(wordFreqMap.begin(), wordFreqMap.end());
-    auto pairSecondGreater = [](StrIntPair& a, StrIntPair& b) { return a.second > b.second; };
-    sort(wordFreqSortedVec.begin(), wordFreqSortedVec.end(), pairSecondGreater);
+    auto pairSecondGreater = [](StrIntPair a, StrIntPair b) { return a.second > b.second; };
+    std::sort(wordFreqSortedVec.begin(), wordFreqSortedVec.end(), pairSecondGreater);
 
     // split words into classes by freq
     std::vector<std::pair<int, int> > classInfo;
@@ -64,26 +65,22 @@ void doClusterForTrainMode(const char *input, const char *classShardPath, const 
     for (auto& it : wordFreqSortedVec) {
         // index words
         wordIdxMap[it.first] = static_cast<int>(wordIdxMap.size());
-
         // generate classes
         tmpWordFreqSum += it.second;
         wordClassIdxMap[it.first] = classIdxCnt;
-
-        // split a new class
-        // ensure no empty class
+        // split a new class (ensure no empyt class)
         if ((tmpWordFreqSum >= (classIdxCnt + 1) * sumFreq / nclass) || (nword - wordIdxCnt) <= nclass - classIdxCnt) {
             classInfo.emplace_back(std::make_pair(nextStartPos, wordIdxCnt));
             nextStartPos = wordIdxCnt + 1;
             ++classIdxCnt;
         }
-
         ++wordIdxCnt;
     }
-
+    
     // generate class shard
     const int kMaxKeyLength = 10;
     char key[kMaxKeyLength];
-    DataShard classShard(classShardPath, DataShard::kCreate);
+    DataShard classShard(std::string(output)+"/class_shard", DataShard::kCreate);
     singa::Record record;
     record.set_type(singa::Record::kWordClass);
     singa::WordClassRecord *classRecord = record.mutable_class_record();
@@ -98,11 +95,12 @@ void doClusterForTrainMode(const char *input, const char *classShardPath, const 
     record.clear_class_record();
 
     // generate vocabulary shard
-    DataShard vocabShard(vocabShardPath, DataShard::kCreate);
+    DataShard vocabShard(std::string(output)+"/vocab_shard", DataShard::kCreate);
     record.set_type(singa::Record::kSingleWord);
     singa::SingleWordRecord *wordRecord = record.mutable_word_record();
     for (auto& it : wordFreqSortedVec) {
-        wordRecord->set_name(it.first);
+	std::cout << it.first << "\t" << wordIdxMap[it.first] << "\t" << wordClassIdxMap[it.first] << "\n";
+        wordRecord->set_word(it.first);
         wordRecord->set_word_index(wordIdxMap[it.first]);
         wordRecord->set_class_index(wordClassIdxMap[it.first]);
         snprintf(key, kMaxKeyLength, "%08d", wordIdxMap[it.first]);
@@ -110,16 +108,16 @@ void doClusterForTrainMode(const char *input, const char *classShardPath, const 
     }
     vocabShard.Flush();
     in.close();
+
 }
 
-void loadClusterForNonTrainMode(const char *input, const char *classShardPath, const char *vocabShardPath,
-                                int nclass, StrIntMap& wordIdxMap, StrIntMap& wordClassIdxMap) {
+void loadClusterForNonTrainMode(const char *input, const char *output, int nclass, StrIntMap& wordIdxMap, StrIntMap& wordClassIdxMap) {
     // init
     wordIdxMap.clear();
     wordClassIdxMap.clear();
 
     // load vocabulary shard data
-    DataShard vocabShard(vocabShardPath, DataShard::kRead);
+    DataShard vocabShard(std::string(output)+"/vocab_shard", DataShard::kRead);
     const int kMaxKeyLength = 10;
     char key[kMaxKeyLength];
     singa::Record record;
@@ -127,25 +125,26 @@ void loadClusterForNonTrainMode(const char *input, const char *classShardPath, c
     // fill value into map
     while (vocabShard.Next(key, &record)) {
         singa::SingleWordRecord *wordRecord = record.mutable_word_record();
-        wordIdxMap[wordRecord->name()] = wordRecord->word_index();
-        wordClassIdxMap[wordRecord->name()] = wordRecord->class_index();
+        wordIdxMap[wordRecord->word()] = wordRecord->word_index();
+        wordClassIdxMap[wordRecord->word()] = wordRecord->class_index();
     }
+
 }
 
-void create_shard(const char *input, const char *classShardPath, const char *vocabShardPath,
-                  int nclass, const char *wordShardPath) {
-    StrIntMap wordIdxMap, wordClassIdxMap;
-    if (-1 == nclass) {
-        loadClusterForNonTrainMode(input, classShardPath, vocabShardPath, nclass, wordIdxMap, wordClassIdxMap);
-    } else {
-        doClusterForTrainMode(input, classShardPath, vocabShardPath, nclass, wordIdxMap, wordClassIdxMap);
-    }
+void create_shard(const char *input, const char *output, int nclass) {
 
+    StrIntMap wordIdxMap, wordClassIdxMap;
+    
+    if (-1 == nclass) {
+        loadClusterForNonTrainMode(input, output, nclass, wordIdxMap, wordClassIdxMap);
+    } else {
+        doClusterForTrainMode(input, output, nclass, wordIdxMap, wordClassIdxMap);
+    }
     // generate word data
     // load input file
     std::ifstream in(input);
     CHECK(in) << "Unable to open file " << input;
-    DataShard wordShard(wordShardPath, DataShard::kCreate);
+    DataShard wordShard(std::string(output)+"/word_shard", DataShard::kCreate);
     singa::Record record;
     record.set_type(singa::Record::kSingleWord);
     singa::SingleWordRecord *wordRecord = record.mutable_word_record();
@@ -157,7 +156,7 @@ void create_shard(const char *input, const char *classShardPath, const char *voc
         // TODO (kaiping): do not forget here if modify tokenize logic
         // TODO (kaiping): how to handle unknown word, just skip for now
         if (wordIdxMap.end() == wordIdxMap.find(word)) continue;
-        wordRecord->set_name(word);
+        wordRecord->set_word(word);
         wordRecord->set_word_index(wordIdxMap[word]);
         wordRecord->set_class_index(wordClassIdxMap[word]);
         snprintf(key, kMaxKeyLength, "%08d", wordIdxMap[word]);
@@ -165,22 +164,22 @@ void create_shard(const char *input, const char *classShardPath, const char *voc
     }
     wordShard.Flush();
     in.close();
+
 }
 
 int main(int argc, char **argv) {
-    if (argc != 6) {
+    if (argc != 4) {
         std::cout << "This program create a DataShard for a RNNLM dataset\n"
-                "The RNNLM dataset could be downloaded at\n"
-                "    http://www.rnnlm.org/\n"
+                "The RNNLM dataset could be downloaded at http://www.rnnlm.org/\n"
                 "You should gunzip them after downloading.\n"
                 "Usage:\n"
-                "    create_shard.bin text_file class_shard_path, vocab_shard_path, class_size, word_shard_path\n"
-                "class_size=-1 means test or validate mode, elsewise indicates train mode";
+                "    create_shard.bin [in_text_file] [out_shard_dir] [class_size]\n"
+                "    class_size=-1 means test or validate mode, elsewise indicates train mode\n";
     } else {
         google::InitGoogleLogging(argv[0]);
-        int classSize = atoi(argv[4]);
-        CHECK(classSize > 0 || -1 == classSize) << "class size parse failed. [" << argv[4] << "]";
-        create_shard(argv[1], argv[2], argv[3], classSize, argv[5]);
+        int classSize = atoi(argv[3]);
+        CHECK(classSize > 0 || -1 == classSize) << "class size parse failed. [" << argv[3] << "]";
+        create_shard(argv[1], argv[2], classSize);
     }
     return 0;
 }

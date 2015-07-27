@@ -226,8 +226,8 @@ void RnnlmComputationLayer::Setup(const LayerProto& proto, int npartitions) {
     const auto& labelData = srclayers_[1]->data(this);  //The order of src layers are due to conf order; labelData has the shape (windowsize_,4)
     windowsize_= sigmoidData.shape()[0];
     vdim_ = sigmoidData.count()/windowsize_;   //e.g, 30; dimension of input
-    classsize_ = dynamic_cast<RnnlmClassparserLayer>(srclayers_[1])->getClassSize(); //10 here, use type casting
-    vocabsize_ = dynamic_cast<RnnlmClassparserLayer>(srclayers_[1])->getVocabSize(); //10000 here, use type casting
+    classsize_ = dynamic_cast<RnnlmClassParserLayer>(srclayers_[1])->getClassSize(); //10 here, use type casting
+    vocabsize_ = dynamic_cast<RnnlmClassParserLayer>(srclayers_[1])->getVocabSize(); //10000 here, use type casting
     hdim_ = classsize_ + vocabsize_; //e.g, 10010 if VocabSize=10000, ClassSize=10; TODO implement getVocabSize() and getClassSize() on LabelLayer
     data_.Reshape(vector<int>{windowsize_, hdim_});
     grad_.ReshapeLike(data_);
@@ -486,7 +486,7 @@ void RnnlmWordinputLayer::Setup(const LayerProto& proto, int npartitions) {
   grad_.ReshapeLike(data_);
   Factory<Param>* factory=Singleton<Factory<Param>>::Instance();
   weight_ = factory->Create("Param");
-  vocabsize_ = dynamic_cast<RnnlmWordparserLayer>(srclayers_[0])->vocabsize();   //use type casting static_cast or dynamic_cast?
+  vocabsize_ = dynamic_cast<RnnlmWordParserLayer>(srclayers_[0])->vocabsize();   //use type casting static_cast or dynamic_cast?
   weight_->Setup(proto.param(0), vector<int>{vocabsize_, hdim_});
 }
 
@@ -509,7 +509,7 @@ void RnnlmWordinputLayer::ComputeGradient(Phase phas) {
    }
 }
 
-/*********** 5-Implementation for RnnlmWordparserLayer **********/
+/*********** 5-Implementation for RnnlmWordParserLayer **********/
 void RnnlmWordParserLayer::Setup(const LayerProto& proto, int npartitions){
   Layer::Setup(proto, npartitions);
   CHECK_EQ(srclayers_.size(), 1);
@@ -523,7 +523,7 @@ void RnnlmWordParserLayer::ParseRecords(Phase phase, const vector<Record>& recor
     }
 }
 
-/*********** 6-Implementation for RnnlmClassparserLayer **********/
+/*********** 6-Implementation for RnnlmClassParserLayer **********/
 void RnnlmClassParserLayer::Setup(const LayerProto& proto, int npartitions){
   Layer::Setup(proto, npartitions);
   CHECK_EQ(srclayers_.size(), 1);
