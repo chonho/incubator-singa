@@ -81,8 +81,7 @@ void doClusterForTrainMode(const char *input, const char *output, int nclass, St
     char key[kMaxKeyLength];
     DataShard classShard(std::string(output)+"/class_shard", DataShard::kCreate);
     singa::Record record;
-    // CLEE
-    //record.set_type(singa::Record::kWordClass);
+    //record.set_type(singa::Record::kWordClass);  // CLEE error
     singa::WordClassRecord *classRecord = record.mutable_class_record();
     for (int i = 0; i != classInfo.size(); ++i) {
         classRecord->set_start(classInfo[i].first);
@@ -96,8 +95,7 @@ void doClusterForTrainMode(const char *input, const char *output, int nclass, St
 
     // generate vocabulary shard
     DataShard vocabShard(std::string(output)+"/vocab_shard", DataShard::kCreate);
-    // CLEE
-    //record.set_type(singa::Record::kSingleWord);
+    //record.set_type(singa::Record::kSingleWord);  // CLEE error
     singa::SingleWordRecord *wordRecord = record.mutable_word_record();
     for (auto& it : wordFreqSortedVec) {
         wordRecord->set_word(it.first);
@@ -146,8 +144,7 @@ void create_shard(const char *input, const char *output, int nclass) {
     CHECK(in) << "Unable to open file " << input;
     DataShard wordShard(std::string(output)+"/word_shard", DataShard::kCreate);
     singa::Record record;
-    // CLEE
-    //record.set_type(singa::Record::kSingleWord);
+    //record.set_type(singa::Record::kSingleWord);  // CLEE error
     singa::SingleWordRecord *wordRecord = record.mutable_word_record();
     int wordStreamCnt = 0;
     const int kMaxKeyLength = 10;
