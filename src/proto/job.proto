@@ -266,9 +266,9 @@ message LayerProto {
   // 4-configuration for RnnlmWordinput layer
   optional RnnlmWordinputProto rnnlmwordinput_conf = 66;
   // 5-configuration for RnnlmWordparser layer
-  optional RnnlmWordparserProto rnnlmwordparser_conf = 67;
+  //optional RnnlmWordparserProto rnnlmwordparser_conf = 67;
   // 6-configuration for RnnlmClassparser layer
-  optional RnnlmClassparserProto rnnlmclassparser_conf = 68;
+  //optional RnnlmClassparserProto rnnlmclassparser_conf = 68;
   // 7-configuration for RnnlmData layer
   optional RnnlmDataProto rnnlmdata_conf = 69;
 }

@@ -349,7 +349,7 @@ class RnnlmWordinputLayer: public Layer {
 /**
   * 5-RnnlmWordparserLayer
   */
-class RnnlmWordParserLayer: public ParserLayer {
+class RnnlmWordparserLayer: public ParserLayer {
  public:
   using ParserLayer::ParseRecords;
   //using Layer::partition_dim;   //to check later? using Layer:: or ParserLayer:: ?
@@ -374,7 +374,7 @@ class RnnlmWordParserLayer: public ParserLayer {
 /**
   * 6-RnnlmClassparserLayer
   */
-class RnnlmClassParserLayer: public ParserLayer {
+class RnnlmClassparserLayer: public ParserLayer {
  public:
   using ParserLayer::ParseRecords;
 
