@@ -1,0 +1,21 @@
+package singa;
+
+import "common.proto";
+
+message WordClassRecord {
+  extend Record {
+    optional WordClassRecord wordclass = 101;
+  }
+  optional int32 class_index = 1; // the index of this class
+  optional int32 start = 2; // the index of the start word in this class;
+  optional int32 end = 3; // the index of the end word in this class
+}
+
+message SingleWordRecord {
+  extend Record {
+     optional SingleWordRecord singleword = 102;
+  }
+  optional string word = 1;
+  optional int32 word_index = 2;   // the index of this word in the vocabulary
+  optional int32 class_index = 3;   // the index of the class corresponding to this word
+}

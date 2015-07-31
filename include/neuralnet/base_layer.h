@@ -10,6 +10,7 @@
 
 #include "proto/job.pb.h"
 #include "proto/common.pb.h"
+#include "proto/record.pb.h"
 #include "utils/param.h"
 #include "utils/common.h"
 #include "utils/blob.h"

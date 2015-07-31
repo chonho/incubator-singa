@@ -15,11 +15,12 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <typeinfo>
 
 #include "utils/data_shard.h"
 #include "utils/common.h"
 #include "proto/common.pb.h"
-
+#include "proto/record.pb.h"
 
 using singa::DataShard;
 
@@ -75,13 +76,13 @@ void doClusterForTrainMode(const char *input, int nclass, StrIntMap& wordIdxMap,
         }
         ++wordIdxCnt;
     }
-    
+/* 
     // generate class shard
     const int kMaxKeyLength = 10;
     char key[kMaxKeyLength];
     DataShard classShard("rnnlm_class_shard", DataShard::kCreate);
     singa::Record record;
-    //record.set_type(singa::Record::kWordClass);  // CLEE error
+    record.set_type(singa::Record::kWordClass);
     singa::WordClassRecord *classRecord = record.mutable_class_record();
     for (int i = 0; i != classInfo.size(); ++i) {
         classRecord->set_start(classInfo[i].first);
@@ -95,7 +96,7 @@ void doClusterForTrainMode(const char *input, int nclass, StrIntMap& wordIdxMap,
 
     // generate vocabulary shard
     DataShard vocabShard("rnnlm_vocab_shard", DataShard::kCreate);
-    //record.set_type(singa::Record::kSingleWord);  // CLEE error
+    record.set_type(singa::Record::kSingleWord); 
     singa::SingleWordRecord *wordRecord = record.mutable_word_record();
     for (auto& it : wordFreqSortedVec) {
         wordRecord->set_word(it.first);
@@ -106,6 +107,29 @@ void doClusterForTrainMode(const char *input, int nclass, StrIntMap& wordIdxMap,
     }
     vocabShard.Flush();
     in.close();
+*/
+    singa::Record record;
+/*
+    std::cout << record.GetExtension(singa::UserRecord::chonho) << "\n";
+    singa::UserRecord * myrecord = record.MutableExtension(singa::UserRecord::user);
+    std::cout << myrecord->lee() << "\n";
+    myrecord->set_lee(555);
+    std::cout << myrecord->lee() << "\n";
+*/
+    singa::WordClassRecord *myrecord = record.MutableExtension(singa::WordClassRecord::wordclass);
+    std::cout << myrecord->start() << "\n";
+    //std::string myword = myrecord.word();
+    //std::cout << myword << "\n";
+    //std::cout << myrecord.GetExtension(singa::Record) << "\n";
+    
+    //singa::SingleWordRecord *myrecord = record.MutableExtension(singa::SingleWordRecord::singleword);
+    //std::cout << myrecord->word() << "\n";
+    //std::cout << typeid(record.MutableExtension(singa::SingleWordRecord::word)).name()<< "\n";
+    //std::string * myword = record.MutableExtension(singa::SingleWordRecord::word);
+    //std::cout << myword << "\n";
+    //std::cout << record.GetExtension(singa::WordClassRecord::start) << "\n";
+//    record.SetExtension(singa::SingleWordRecord::word,"myword");
+//    std::cout << record.GetExtension(singa::SingleWordRecord::word) << "\n";
 
 }
 
@@ -113,7 +137,7 @@ void loadClusterForNonTrainMode(const char *input, int nclass, StrIntMap& wordId
     // init
     wordIdxMap.clear();
     wordClassIdxMap.clear();
-
+/*
     // load vocabulary shard data
     DataShard vocabShard("rnnlm_vocab_shard", DataShard::kRead);
     std::string key;
@@ -125,7 +149,7 @@ void loadClusterForNonTrainMode(const char *input, int nclass, StrIntMap& wordId
         wordIdxMap[wordRecord->word()] = wordRecord->word_index();
         wordClassIdxMap[wordRecord->word()] = wordRecord->class_index();
     }
-
+*/
 }
 
 void create_shard(const char *input, int nclass) {
@@ -143,8 +167,9 @@ void create_shard(const char *input, int nclass) {
     std::ifstream in(input);
     CHECK(in) << "Unable to open file " << input;
     DataShard wordShard("rnnlm_word_shard_"+std::string(strchr(input,'/')+1), DataShard::kCreate);
+ /*
     singa::Record record;
-    //record.set_type(singa::Record::kSingleWord);  // CLEE error
+    record.set_type(singa::Record::kSingleWord);
     singa::SingleWordRecord *wordRecord = record.mutable_word_record();
     int wordStreamCnt = 0;
     const int kMaxKeyLength = 10;
@@ -162,6 +187,8 @@ void create_shard(const char *input, int nclass) {
     }
     wordShard.Flush();
     in.close();
+*/
+
 }
 
 int main(int argc, char **argv) {

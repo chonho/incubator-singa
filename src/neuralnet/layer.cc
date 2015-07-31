@@ -11,6 +11,7 @@ using namespace mshadow;
 using namespace mshadow::expr;
 
 namespace singa {
+
 inline Tensor<cpu, 4> Tensor4(Blob<float>* blob) {
   const vector<int>& shape = blob->shape();
   Tensor<cpu, 4> tensor(blob->mutable_cpu_data(),
@@ -714,9 +715,12 @@ void RnnlmWordparserLayer::Setup(const LayerProto& proto, int npartitions){
 }
 void RnnlmWordparserLayer::ParseRecords(Phase phase, const vector<Record>& records, Blob<float>* blob){
     float *data_dptr = data_.mutable_cpu_data();
+    singa::SingleWordRecord * swr;
     for(int i = 0; i < records.size() - 1; i++){//The first windowsize_ records in input "windowsize_ + 1" records
+        swr = records[i].MutableExtension(singa::SingleWordRecord::singleword);
         //data_[i] = records[i].word_record().word_index();
-        data_dptr[i] = records[i].word_record().word_index();
+        //clee data_dptr[i] = records[i].word_record().word_index();
+        data_dptr[i] = swr->word_index();
     }
 }
 
@@ -730,17 +734,21 @@ void RnnlmClassparserLayer::Setup(const LayerProto& proto, int npartitions){
   data_.Reshape(vector<int>{windowsize_, 4});
 }
 void RnnlmClassparserLayer::ParseRecords(Phase phase, const vector<Record>& records, Blob<float>* blob){
+    singa::SingleWordRecord * swr;
     float *data_dptr = data_.mutable_cpu_data();
     //Blob<int> *class_info_ptr = (static_cast<RnnlmDataLayer*>(srclayers_[0])->classinfo());
     int *class_info_ptr_tmp = (static_cast<RnnlmDataLayer*>(srclayers_[0])->classinfo())->mutable_cpu_data();
     for(int i = 1; i < records.size(); i++){//The last windowsize_ records in input "windowsize_ + 1" records
-        int tmp_class_idx = records[i].word_record().class_index();
+        swr = records[i].MutableExtension(singa::SingleWordRecord::singleword);
+        //clee int tmp_class_idx = records[i].word_record().class_index();
+        int tmp_class_idx = swr->class_index();
         //data_[i][0] = (*(static_cast<RnnlmDataLayer*>(srclayers_[0])->classinfo()))[tmp_class_idx][0];
         data_dptr[4 * i + 0] = class_info_ptr_tmp[2 * tmp_class_idx + 0];
         //data_[i][1] = (*(static_cast<RnnlmDataLayer*>(srclayers_[0])->classinfo()))[tmp_class_idx][1];
         data_dptr[4 * i + 1] = class_info_ptr_tmp[2 * tmp_class_idx + 1];
         //data_[i][2] = records[i].word_record().word_index();
-        data_dptr[4 * i + 2] = records[i].word_record().word_index();
+        //clee data_dptr[4 * i + 2] = records[i].word_record().word_index();
+        data_dptr[4 * i + 2] = swr->word_index();
         //data_[i][3] = tmp_class_idx;
         data_dptr[4 * i + 3] = tmp_class_idx;
     }
@@ -761,16 +769,23 @@ void RnnlmDataLayer::Setup(const LayerProto& proto, int npartitions) {
   classsize_ = classshard_->Count(); //First read through class_shard and obtain values for class_size and vocab_size
   classinfo_.Reshape(vector<int>{classsize_, 2});    //classsize_ rows and 2 columns
 
+
+  //clee typedef singa::WordClassRecord wcr;
+  singa::WordClassRecord *wcr;
+
   int max_vocabidx_end = 0;
-        int *class_info_ptr = classinfo_.mutable_cpu_data();
+  int *class_info_ptr = classinfo_.mutable_cpu_data();
   for(int i = 0; i < classsize_; i++){
     classshard_->Next(&class_key, &sample_);
+    wcr = sample_.MutableExtension(singa::WordClassRecord::wordclass);
     //classinfo_[i][0] = sample_.class_record().start();
-      class_info_ptr[2 * i + 0] = sample_.class_record().start();
+    //class_info_ptr[2 * i + 0] = sample_.MutableExtension(wcr::wordclass)->start();
+    class_info_ptr[2 * i + 0] = wcr->start();
     //classinfo_[i][1] = sample_.class_record().end();
-      class_info_ptr[2 * i + 1] = sample_.class_record().end();
-    if(sample_.class_record().end() > max_vocabidx_end){
-        max_vocabidx_end = sample_.class_record().end();
+    //class_info_ptr[2 * i + 1] = sample_.MutableExtension(wcr::wordclass)->end();
+    class_info_ptr[2 * i + 1] = wcr->end();
+    if(wcr->end() > max_vocabidx_end){
+        max_vocabidx_end = wcr->end();
     }
   }
   vocabsize_ = max_vocabidx_end + 1;
@@ -1215,3 +1230,4 @@ void SoftmaxLossLayer::ComputeGradient(Phase phase) {
 }
 
 }  // namespace singa
+

@@ -1,24 +1,28 @@
 ACLOCAL_AMFLAGS = -I config
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CPPFLAGS = -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/src \
+              -I$(top_srcdir)/include
 
 MSHADOW_FLAGS = -DMSHADOW_USE_CUDA=0 -DMSHADOW_USE_CBLAS=1 -DMSHADOW_USE_MKL=0
 
 AC_CXXFLAGS = -O3 -Wall -pthread -fPIC -std=c++11 -Wno-unknown-pragmas \
               $(MSHADOW_FLAGS) -DCPU_ONLY=1 -funroll-loops
 
-INCLUDES = -I$(top_srcdir)/include
+#INCLUDES = -I$(top_srcdir)/include
 
 PROTOS := $(top_srcdir)/src/proto/singa.proto \
           $(top_srcdir)/src/proto/job.proto \
-          $(top_srcdir)/src/proto/common.proto
+          $(top_srcdir)/src/proto/record.proto \
+          $(top_srcdir)/src/proto/common.proto 
 PROTO_SRCS := src/proto/singa.pb.cc \
               src/proto/job.pb.cc \
-              src/proto/common.pb.cc
+              src/proto/record.pb.cc \
+              src/proto/common.pb.cc 
 PROTO_HDRS := include/proto/singa.pb.h \
               include/proto/job.pb.h \
-              include/proto/common.pb.h
+              include/proto/record.pb.h \
+              include/proto/common.pb.h 
 PROTO_PYS := tool/pb2/singa_pb2.py \
              tool/pb2/job_pb2.py \
              tool/pb2/common_pb2.py
