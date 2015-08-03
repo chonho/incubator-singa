@@ -256,21 +256,8 @@ message LayerProto {
   repeated string share_param = 60;
   optional int32 partition_id = 62 [default = 0];
   
-  //For implementation of RNNLM application
-  // 1-configuration for RnnlmComputation layer
-  optional RnnlmComputationProto rnnlmcomputation_conf = 63;
-  // 2-configuration for RnnlmSigmoid layer
-  optional RnnlmSigmoidProto rnnlmsigmoid_conf = 64;
-  // 3-configuration for RnnlmInnerproduct layer
-  optional RnnlmInnerproductProto rnnlminnerproduct_conf = 65;
-  // 4-configuration for RnnlmWordinput layer
-  optional RnnlmWordinputProto rnnlmwordinput_conf = 66;
-  // 5-configuration for RnnlmWordparser layer
-  //optional RnnlmWordparserProto rnnlmwordparser_conf = 67;
-  // 6-configuration for RnnlmClassparser layer
-  //optional RnnlmClassparserProto rnnlmclassparser_conf = 68;
-  // 7-configuration for RnnlmData layer
-  optional RnnlmDataProto rnnlmdata_conf = 69;
+
+  extensions 100 to max;
 }
 
 message RGBImageProto {
@@ -421,52 +408,6 @@ message ReLUProto {
   // Rectifier nonlinearities improve neural network acoustic models.
   // In ICML Workshop on Deep Learning for Audio, Speech, and Language Processing.
   optional float negative_slope = 1 [default = 0];
-}
-
-//For implementation of RNNLM application
-// 1-Message that stores parameters used by RnnlmComputationLayer
-message RnnlmComputationProto {
-  // use bias vector or not
-  optional bool bias_term = 1 [default = true];
-}
-  
-// 2-Message that stores parameters used by RnnlmSigmoidLayer
-message RnnlmSigmoidProto {
-  // use bias vector or not
-  optional bool bias_term = 1 [default = true];
-}
-
-// 3-Message that stores parameters used by RnnlmInnerproductLayer
-message RnnlmInnerproductProto {
-  // number of outputs for the layer
-  required int32 num_output = 1;
-  // use bias vector or not
-  optional bool bias_term = 30 [default = true];
-}
-
-// 4-Message that stores parameters used by RnnlmWordinputLayer
-message RnnlmWordinputProto {
-  // vector length for each input word
-  required int32 word_length = 1;
-  // use bias vector or not
-  optional bool bias_term = 30 [default = true];
-}
-
-// 5-Message that stores parameters used by RnnlmWordparserLayer - nothing needs to be configured
-//message RnnlmWordparserProto {
-//}
-
-// 6-Message that stores parameters used by RnnlmClassparserLayer - nothing needs to be configured
-//message RnnlmClassparserProto {
-//}
-
-// 7-Message that stores parameters used by RnnlmDataLayer
-message RnnlmDataProto {
-  // path to the data file/folder, absolute or relative to the workspace
-  required string class_path = 1;
-  required string word_path = 2;
-  // window size.
-  required int32 window_size = 3;
 }
 
 

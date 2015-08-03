@@ -139,7 +139,7 @@ am__objects_1 =
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_2 = src/proto/libsinga_la-singa.pb.lo \
 	src/proto/libsinga_la-job.pb.lo \
-	src/proto/libsinga_la-record.pb.lo \
+	src/proto/libsinga_la-user.pb.lo \
 	src/proto/libsinga_la-common.pb.lo
 am__objects_3 = src/utils/libsinga_la-cluster.lo \
 	src/utils/libsinga_la-cluster_rt.lo \
@@ -411,17 +411,17 @@ AC_CXXFLAGS = -O3 -Wall -pthread -fPIC -std=c++11 -Wno-unknown-pragmas \
 #INCLUDES = -I$(top_srcdir)/include
 PROTOS := $(top_srcdir)/src/proto/singa.proto \
           $(top_srcdir)/src/proto/job.proto \
-          $(top_srcdir)/src/proto/record.proto \
+          $(top_srcdir)/src/proto/user.proto \
           $(top_srcdir)/src/proto/common.proto 
 
 PROTO_SRCS := src/proto/singa.pb.cc \
               src/proto/job.pb.cc \
-              src/proto/record.pb.cc \
+              src/proto/user.pb.cc \
               src/proto/common.pb.cc 
 
 PROTO_HDRS := include/proto/singa.pb.h \
               include/proto/job.pb.h \
-              include/proto/record.pb.h \
+              include/proto/user.pb.h \
               include/proto/common.pb.h 
 
 PROTO_PYS := tool/pb2/singa_pb2.py \
@@ -612,7 +612,7 @@ src/proto/libsinga_la-singa.pb.lo: src/proto/$(am__dirstamp) \
 	src/proto/$(DEPDIR)/$(am__dirstamp)
 src/proto/libsinga_la-job.pb.lo: src/proto/$(am__dirstamp) \
 	src/proto/$(DEPDIR)/$(am__dirstamp)
-src/proto/libsinga_la-record.pb.lo: src/proto/$(am__dirstamp) \
+src/proto/libsinga_la-user.pb.lo: src/proto/$(am__dirstamp) \
 	src/proto/$(DEPDIR)/$(am__dirstamp)
 src/proto/libsinga_la-common.pb.lo: src/proto/$(am__dirstamp) \
 	src/proto/$(DEPDIR)/$(am__dirstamp)
@@ -775,8 +775,8 @@ include src/neuralnet/$(DEPDIR)/libsinga_la-neuralnet.Plo
 include src/neuralnet/$(DEPDIR)/libsinga_la-optional_layer.Plo
 include src/proto/$(DEPDIR)/libsinga_la-common.pb.Plo
 include src/proto/$(DEPDIR)/libsinga_la-job.pb.Plo
-include src/proto/$(DEPDIR)/libsinga_la-record.pb.Plo
 include src/proto/$(DEPDIR)/libsinga_la-singa.pb.Plo
+include src/proto/$(DEPDIR)/libsinga_la-user.pb.Plo
 include src/trainer/$(DEPDIR)/libsinga_la-server.Plo
 include src/trainer/$(DEPDIR)/libsinga_la-trainer.Plo
 include src/trainer/$(DEPDIR)/libsinga_la-worker.Plo
@@ -828,12 +828,12 @@ src/proto/libsinga_la-job.pb.lo: src/proto/job.pb.cc
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
 #	$(AM_V_CXX_no)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsinga_la_CXXFLAGS) $(CXXFLAGS) -c -o src/proto/libsinga_la-job.pb.lo `test -f 'src/proto/job.pb.cc' || echo '$(srcdir)/'`src/proto/job.pb.cc
 
-src/proto/libsinga_la-record.pb.lo: src/proto/record.pb.cc
-	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsinga_la_CXXFLAGS) $(CXXFLAGS) -MT src/proto/libsinga_la-record.pb.lo -MD -MP -MF src/proto/$(DEPDIR)/libsinga_la-record.pb.Tpo -c -o src/proto/libsinga_la-record.pb.lo `test -f 'src/proto/record.pb.cc' || echo '$(srcdir)/'`src/proto/record.pb.cc
-	$(AM_V_at)$(am__mv) src/proto/$(DEPDIR)/libsinga_la-record.pb.Tpo src/proto/$(DEPDIR)/libsinga_la-record.pb.Plo
-#	$(AM_V_CXX)source='src/proto/record.pb.cc' object='src/proto/libsinga_la-record.pb.lo' libtool=yes \
+src/proto/libsinga_la-user.pb.lo: src/proto/user.pb.cc
+	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsinga_la_CXXFLAGS) $(CXXFLAGS) -MT src/proto/libsinga_la-user.pb.lo -MD -MP -MF src/proto/$(DEPDIR)/libsinga_la-user.pb.Tpo -c -o src/proto/libsinga_la-user.pb.lo `test -f 'src/proto/user.pb.cc' || echo '$(srcdir)/'`src/proto/user.pb.cc
+	$(AM_V_at)$(am__mv) src/proto/$(DEPDIR)/libsinga_la-user.pb.Tpo src/proto/$(DEPDIR)/libsinga_la-user.pb.Plo
+#	$(AM_V_CXX)source='src/proto/user.pb.cc' object='src/proto/libsinga_la-user.pb.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
-#	$(AM_V_CXX_no)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsinga_la_CXXFLAGS) $(CXXFLAGS) -c -o src/proto/libsinga_la-record.pb.lo `test -f 'src/proto/record.pb.cc' || echo '$(srcdir)/'`src/proto/record.pb.cc
+#	$(AM_V_CXX_no)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsinga_la_CXXFLAGS) $(CXXFLAGS) -c -o src/proto/libsinga_la-user.pb.lo `test -f 'src/proto/user.pb.cc' || echo '$(srcdir)/'`src/proto/user.pb.cc
 
 src/proto/libsinga_la-common.pb.lo: src/proto/common.pb.cc
 	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsinga_la_CXXFLAGS) $(CXXFLAGS) -MT src/proto/libsinga_la-common.pb.lo -MD -MP -MF src/proto/$(DEPDIR)/libsinga_la-common.pb.Tpo -c -o src/proto/libsinga_la-common.pb.lo `test -f 'src/proto/common.pb.cc' || echo '$(srcdir)/'`src/proto/common.pb.cc

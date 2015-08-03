@@ -15,12 +15,11 @@
 #include <map>
 #include <vector>
 #include <algorithm>
-#include <typeinfo>
 
 #include "utils/data_shard.h"
 #include "utils/common.h"
 #include "proto/common.pb.h"
-#include "proto/record.pb.h"
+#include "proto/user.pb.h"
 
 using singa::DataShard;
 
@@ -83,30 +82,32 @@ void doClusterForTrainMode(const char *input, int nclass, StrIntMap& wordIdxMap,
     DataShard classShard("rnnlm_class_shard", DataShard::kCreate);
     singa::Record record;
     record.set_type(singa::Record::kWordClass);
-    singa::WordClassRecord *classRecord = record.MutableExtension(singa::WordClassRecord::wordclass);
+    //singa::WordClassRecord* wcr = record.MutableExtension(singa::WordClassRecord::wordclass);
+    singa::WordClassRecord* wcr = record.MutableExtension(singa::wordclass);
     for (int i = 0; i != classInfo.size(); ++i) {
-        classRecord->set_start(classInfo[i].first);
-        classRecord->set_end(classInfo[i].second);
-        classRecord->set_class_index(i);
+        wcr->set_start(classInfo[i].first);
+        wcr->set_end(classInfo[i].second);
+        wcr->set_class_index(i);
         snprintf(key, kMaxKeyLength, "%08d", i);
         classShard.Insert(std::string(key), record);
     }
     classShard.Flush();
-    record.ClearExtension(singa::WordClassRecord::wordclass);
+    record.ClearExtension(singa::wordclass);
 
     // generate vocabulary shard
     DataShard vocabShard("rnnlm_vocab_shard", DataShard::kCreate);
     record.set_type(singa::Record::kSingleWord); 
-    singa::SingleWordRecord *wordRecord = record.MutableExtension(singa::SingleWordRecord::singleword);
+    //singa::SingleWordRecord *swr = record.MutableExtension(singa::SingleWordRecord::singleword);
+    singa::SingleWordRecord *swr = record.MutableExtension(singa::singleword);
     for (auto& it : wordFreqSortedVec) {
-        wordRecord->set_word(it.first);
-        wordRecord->set_word_index(wordIdxMap[it.first]);
-        wordRecord->set_class_index(wordClassIdxMap[it.first]);
+        swr->set_word(it.first);
+        swr->set_word_index(wordIdxMap[it.first]);
+        swr->set_class_index(wordClassIdxMap[it.first]);
         snprintf(key, kMaxKeyLength, "%08d", wordIdxMap[it.first]);
         vocabShard.Insert(std::string(key), record);
     }
     vocabShard.Flush();
-    record.ClearExtension(singa::SingleWordRecord::singleword);
+    record.ClearExtension(singa::singleword);
     in.close();
 }
 
@@ -121,11 +122,11 @@ void loadClusterForNonTrainMode(const char *input, int nclass, StrIntMap& wordId
     singa::Record record;
 
     // fill value into map
-    singa::SingleWordRecord *wordRecord;
+    singa::SingleWordRecord swr;
     while (vocabShard.Next(&key, &record)) {
-        wordRecord = record.MutableExtension(singa::SingleWordRecord::singleword);
-        wordIdxMap[wordRecord->word()] = wordRecord->word_index();
-        wordClassIdxMap[wordRecord->word()] = wordRecord->class_index();
+        swr = record.GetExtension(singa::singleword);
+        wordIdxMap[swr.word()] = swr.word_index();
+        wordClassIdxMap[swr.word()] = swr.class_index();
     }
 
 }
@@ -148,7 +149,8 @@ void create_shard(const char *input, int nclass) {
  
     singa::Record record;
     record.set_type(singa::Record::kSingleWord);
-    singa::SingleWordRecord *wordRecord = record.MutableExtension(singa::SingleWordRecord::singleword);
+    //singa::SingleWordRecord *wordRecord = record.MutableExtension(singa::SingleWordRecord::singleword);
+    singa::SingleWordRecord *wordRecord = record.MutableExtension(singa::singleword);
     int wordStreamCnt = 0;
     const int kMaxKeyLength = 10;
     char key[kMaxKeyLength];
@@ -183,3 +185,4 @@ int main(int argc, char **argv) {
     }
     return 0;
 }
+
