@@ -814,14 +814,16 @@ void RnnlmDataLayer::Setup(const LayerProto& proto, int npartitions) {
   classshard_ = std::make_shared<DataShard>(
 		//proto.rnnlmdata_conf().class_path(),
 		proto.GetExtension(rnnlmdata_conf).class_path(),
+		//proto.GetExtension(RnnlmDataProto::rnnlmdata_conf).class_path(),
 		DataShard::kRead);
   wordshard_ = std::make_shared<DataShard>(
 		//proto.rnnlmdata_conf().word_path(),
 		proto.GetExtension(rnnlmdata_conf).word_path(),
+		//proto.GetExtension(RnnlmDataProto::rnnlmdata_conf).word_path(),
 		DataShard::kRead);
   string class_key, word_key;
   windowsize_ = proto.GetExtension(rnnlmdata_conf).window_size();
-  //windowsize_ = rdp->window_size();
+  //windowsize_ = proto.GetExtension(RnnlmDataProto::rnnlmdata_conf).window_size();
   records_.resize(windowsize_ + 1);
   classsize_ = classshard_->Count(); //First read through class_shard and obtain values for class_size and vocab_size
         LOG(ERROR) << "class size: " << classsize_;

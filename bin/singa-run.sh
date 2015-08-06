@@ -66,10 +66,11 @@ fi
 
 # generate host file
 host_file=$workspace/job.hosts
-python $SINGA_HOME/tool/gen_hosts.py -conf=$job_conf \
-                                     -hosts=$SINGA_CONF/hostfile \
-                                     -output=$host_file \
-                                     || exit 1
+#python $SINGA_HOME/tool/gen_hosts.py -conf=$job_conf \
+#                                     -hosts=$SINGA_CONF/hostfile \
+#                                     -output=$host_file \
+#                                     || exit 1
+
 
 # generate unique job id
 ./singatool create 1>$workspace/job.id || exit 1

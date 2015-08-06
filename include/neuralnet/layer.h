@@ -13,6 +13,7 @@
 #include <random>
 
 #include "proto/job.pb.h"
+#include "proto/user.pb.h"
 #include "utils/data_shard.h"
 #include "neuralnet/base_layer.h"
 

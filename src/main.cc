@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
   singa::JobProto jobConf;
   std::string job_file = FLAGS_workspace + "/job.conf";
-  LOG(ERROR)<<"begin";
+  LOG(ERROR)<<"begin" << job_file;
   singa::ReadProtoFromTextFile(job_file.c_str(), &jobConf);
   CHECK(jobConf.has_cluster());
   CHECK(jobConf.has_model());

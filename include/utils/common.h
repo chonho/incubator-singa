@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "proto/common.pb.h"
+#include "proto/user.pb.h"
 
 #ifndef GFLAGS_GFLAGS_H_
   namespace gflags = google;

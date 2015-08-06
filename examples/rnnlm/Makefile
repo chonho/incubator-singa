@@ -26,6 +26,9 @@ rnnlm: proto create
 proto:
 	cp $(userproto) $(dirproto)
 	protoc -I=$(dirproto) --cpp_out=$(dirproto) $(dirproto)/$(userproto) $(dirproto)/common.proto $(dirproto)/job.proto
+	mkdir -p $(singaroot)/tool/pb2/
+	touch $(singaroot)/tool/pb2/__init__.py
+	protoc -I=$(dirproto) --python_out=$(singaroot)/tool/pb2  $(dirproto)/$(userproto) $(dirproto)/common.proto $(dirproto)/job.proto
 	mkdir -p $(singaroot)/include/proto
 	cp $(dirproto)/*.pb.h $(singaroot)/include/proto
 

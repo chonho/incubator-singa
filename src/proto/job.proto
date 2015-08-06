@@ -255,7 +255,6 @@ message LayerProto {
   // names of parameters shared from other layers
   repeated string share_param = 60;
   optional int32 partition_id = 62 [default = 0];
-  
 
   extensions 100 to max;
 }

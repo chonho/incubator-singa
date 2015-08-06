@@ -5,6 +5,7 @@
 
 #include "utils/common.h"
 #include "proto/job.pb.h"
+#include "proto/user.pb.h"
 #include "proto/singa.pb.h"
 
 #include "utils/param.h"
@@ -15,11 +16,18 @@
 #include "trainer/trainer.h"
 #include "communication/socket.h"
 
+#include <google/protobuf/text_format.h>
+
 DEFINE_string(singa_conf, "conf/singa.conf", "Global config file");
 
 namespace singa {
 void SubmitJob(int job, bool resume, const JobProto& jobConf) {
   SingaProto singaConf;
+
+  std::string s;
+  google::protobuf::TextFormat::PrintToString(jobConf, &s);
+  LOG(ERROR) << s.c_str();
+ 
   ReadProtoFromTextFile(FLAGS_singa_conf.c_str(), &singaConf);
   if (singaConf.has_log_dir())
     SetupLog(singaConf.log_dir(),

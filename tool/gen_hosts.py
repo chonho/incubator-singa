@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 from google.protobuf import text_format
+from pb2.user_pb2 import * 
 from pb2.job_pb2 import JobProto
 
 # parse command line

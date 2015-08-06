@@ -12,18 +12,19 @@ AC_CXXFLAGS = -O3 -Wall -pthread -fPIC -std=c++11 -Wno-unknown-pragmas \
 #INCLUDES = -I$(top_srcdir)/include
 
 PROTOS := $(top_srcdir)/src/proto/singa.proto \
-          $(top_srcdir)/src/proto/job.proto \
           $(top_srcdir)/src/proto/user.proto \
+          $(top_srcdir)/src/proto/job.proto \
           $(top_srcdir)/src/proto/common.proto 
 PROTO_SRCS := src/proto/singa.pb.cc \
-              src/proto/job.pb.cc \
               src/proto/user.pb.cc \
+              src/proto/job.pb.cc \
               src/proto/common.pb.cc 
 PROTO_HDRS := include/proto/singa.pb.h \
-              include/proto/job.pb.h \
               include/proto/user.pb.h \
+              include/proto/job.pb.h \
               include/proto/common.pb.h 
 PROTO_PYS := tool/pb2/singa_pb2.py \
+             tool/pb2/user_pb2.py \
              tool/pb2/job_pb2.py \
              tool/pb2/common_pb2.py
 
