@@ -190,6 +190,14 @@ message LayerProto {
     kTanh = 14;
     kRBMVis = 23;
     kRBMHid = 24;
+    
+    kRnnlmComputation = 26;
+    kRnnlmSigmoid = 27;
+    kRnnlmInnerproduct = 28;
+    kRnnlmWordinput = 29;
+    kRnnlmData = 30;
+    kRnnlmClassparser = 31;
+    kRnnlmWordparser = 32;
   }
   // source layer names
   repeated string srclayers = 3;
@@ -246,6 +254,8 @@ message LayerProto {
   // names of parameters shared from other layers
   repeated string share_param = 60;
   optional int32 partition_id = 62 [default = 0];
+
+  extensions 200 to 299;
 }
 
 message RGBImageProto {

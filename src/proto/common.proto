@@ -77,10 +77,14 @@ message Record {
   enum Type {
     // each record contains image raw feature and its label.
     kSingleLabelImage = 0;
+    kWordClass = 1;
+    kSingleWord = 2;
   }
   optional Type type = 1 [default = kSingleLabelImage];
   // configuration for
   optional SingleLabelImageRecord image = 2;
+
+  extensions 100 to 199;
 }
 
 message SingleLabelImageRecord {

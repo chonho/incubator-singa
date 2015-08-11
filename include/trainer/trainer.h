@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <queue>
 #include "proto/job.pb.h"
+#include "proto/user.pb.h"
 #include "proto/singa.pb.h"
 #include "utils/param.h"
 #include "utils/singleton.h"

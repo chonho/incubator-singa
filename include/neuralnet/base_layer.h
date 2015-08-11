@@ -9,6 +9,7 @@
 #include <thread>
 
 #include "proto/job.pb.h"
+#include "proto/user.pb.h"
 #include "proto/common.pb.h"
 #include "utils/param.h"
 #include "utils/common.h"
@@ -220,6 +221,7 @@ class Layer {
   vector<Layer*> srclayers_, dstlayers_;
 };
 
+
 class BridgeLayer : public Layer {
  public:
   void set_ready(bool a) {
@@ -303,6 +305,7 @@ class ConcateLayer: public Layer {
 /**
  * Base layer for reading records from local Shard, HDFS, lmdb, etc.
  */
+//clee class DataLayer: public Layer{
 class DataLayer: public Layer{
  public:
   using Layer::ComputeGradient;
@@ -479,6 +482,8 @@ class ParserLayer: public Layer {
     return grad_;
   }
 };
+
+
 }  // namespace singa
 
 #endif  // SINGA_NEURALNET_BASE_LAYER_H_

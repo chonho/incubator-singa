@@ -5,6 +5,7 @@
 #include <utils/param.h>
 #include <utils/updater.h>
 #include "proto/job.pb.h"
+#include "proto/user.pb.h"
 #include "communication/socket.h"
 
 namespace singa {

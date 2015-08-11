@@ -13,6 +13,7 @@
 #include <random>
 
 #include "proto/job.pb.h"
+#include "proto/user.pb.h"
 #include "utils/data_shard.h"
 #include "neuralnet/base_layer.h"
 
@@ -204,6 +205,239 @@ class InnerProductLayer: public Layer {
   Param* weight_, *bias_;
 };
 
+
+
+/***********  Implementing layers used in RNNLM application ***********/
+/**
+  * 1-RnnlmComputationLayer, this layer will receive the ground truth and then compute the SUM(log(probability))
+  */
+class RnnlmComputationLayer: public Layer {
+public:
+    using Layer::ComputeFeature;
+    using Layer::ComputeGradient;
+
+    void Setup(const LayerProto& proto, int npartitions) override;//need to change the row, column order
+    void ComputeFeature(Phase phase, Metric *perf) override;
+    void ComputeGradient(Phase phase) override;
+
+    ConnectionType src_neuron_connection(int k) const override {
+        // CHECK_LT(k, srclayers_.size());
+        return kOneToAll;
+    }
+
+    const vector<Param*> GetParams() const override {
+        vector<Param*> params{weight_};
+        return params;
+    }
+    ~RnnlmComputationLayer();
+
+
+private:
+    //! dimension of the hidden layer
+    int hdim_;//dimension of output
+    //! dimension of the visible layer
+    int vdim_;//dimension of input
+    //int batchsize_;
+    int windowsize_; // Use windowsize_ to represent different timestamps
+    Param* weight_; // Delete the parameter "bias" as there is no need to use �bias� according to the paper
+    float sum_;
+    int classsize_;
+    int vocabsize_;
+};
+
+
+/**
+  * 2-RnnlmSigmoidLayer, this layer will make use of information from previous time stamp
+  */
+class RnnlmSigmoidLayer: public Layer {
+public:
+    using Layer::ComputeFeature;
+    using Layer::ComputeGradient;
+
+    void Setup(const LayerProto& proto, int npartitions) override;//need to change the row, column order
+    void ComputeFeature(Phase phase, Metric *perf) override;
+    void ComputeGradient(Phase phase) override;
+
+    ConnectionType src_neuron_connection(int k) const override {
+        // CHECK_LT(k, srclayers_.size());
+        return kOneToAll;
+    }
+
+    const vector<Param*> GetParams() const override {
+        vector<Param*> params{weight_};
+        return params;
+    }
+    ~RnnlmSigmoidLayer();
+
+
+private:
+    //! dimension of the hidden layer
+    int hdim_;//dimension of output
+    //! dimension of the visible layer
+    int vdim_;//dimension of input
+    //int batchsize_;
+    int windowsize_; // Use windowsize_ to represent different timestamps
+    Param* weight_; // The weight matrix between s(t-1) and s(t)
+};
+
+
+/**
+  * 3-RnnlmInnerproductLayer, this layer is very similar to ordinary InnerproductLayer except that the consideration for window_size
+  */
+class RnnlmInnerproductLayer: public Layer {
+ public:
+  using Layer::ComputeFeature;
+  using Layer::ComputeGradient;
+
+  void Setup(const LayerProto& proto, int npartitions) override;
+  void ComputeFeature(Phase phase, Metric *perf) override;
+  void ComputeGradient(Phase phase) override;
+
+
+  ConnectionType src_neuron_connection(int k) const override {
+    // CHECK_LT(k, srclayers_.size());
+    return kOneToAll;
+  }
+  const vector<Param*> GetParams() const override {
+    vector<Param*> params{weight_};
+    return params;
+  }
+  ~RnnlmInnerproductLayer();
+
+ private:
+  //! dimension of the hidden layer
+  int hdim_;
+  //! dimension of the visible layer
+  int vdim_;
+  int windowsize_;  //The only difference from ordinary InnerProductLayer
+  Param* weight_;
+};
+
+/**
+  * 4-RnnlmWordinputLayer, this layer is in charge of managing the input words, for each inout word index, output the |V| vector
+  * Note: the value of |V| is user-defined
+  */
+class RnnlmWordinputLayer: public Layer {
+ public:
+  using Layer::ComputeFeature;
+  using Layer::ComputeGradient;
+
+  void Setup(const LayerProto& proto, int npartitions) override;
+  void ComputeFeature(Phase phase, Metric *perf) override;
+  void ComputeGradient(Phase phase) override;
+
+
+  ConnectionType src_neuron_connection(int k) const override {
+    // CHECK_LT(k, srclayers_.size());
+    return kOneToAll;
+  }
+  const vector<Param*> GetParams() const override {
+    vector<Param*> params{weight_};
+    return params;
+  }
+  ~RnnlmWordinputLayer();
+
+ private:
+  //! dimension of the hidden layer
+  int hdim_;
+  //! dimension of the visible layer
+  int vdim_;
+  int windowsize_;
+  int vocabsize_;   //The size of vocabulary
+  Param* weight_;   //The weight matrix here is U, (vocab_size, |v|)
+};
+
+/**
+  * 5-RnnlmWordparserLayer
+  */
+class RnnlmWordparserLayer: public ParserLayer {
+ public:
+  using ParserLayer::ParseRecords;
+  //using Layer::partition_dim;   //to check later? using Layer:: or ParserLayer:: ?
+
+  void Setup(const LayerProto& proto, int npartitions) override;
+  void ParseRecords(Phase phase, const vector<Record>& records, Blob<float>* blob) override;
+  int partition_dim() const override{   //Need to return 0
+    return 0;
+  }
+
+  int vocabsize() const {
+    return vocabsize_;
+  }
+
+  //~RnnlmWordparserLayer();
+
+ private:
+  int windowsize_;
+  int vocabsize_;
+};
+
+/**
+  * 6-RnnlmClassparserLayer
+  */
+class RnnlmClassparserLayer: public ParserLayer {
+ public:
+  using ParserLayer::ParseRecords;
+
+  void Setup(const LayerProto& proto, int npartitions) override;
+  void ParseRecords(Phase phase, const vector<Record>& records, Blob<float>* blob) override;
+
+  int partition_dim() const override{   //Need to return 0
+    return 0;
+  }
+
+  int classsize() const {
+    return classsize_;
+  }
+
+  int vocabsize() const {
+    return vocabsize_;
+  }
+
+  //~RnnlmClassparserLayer();
+ private:
+  int windowsize_;
+  int vocabsize_;
+  int classsize_;
+};
+
+/**
+  * 7-RnnlmDataLayer
+  */
+class RnnlmDataLayer: public DataLayer{
+ public:
+  using Layer::ComputeFeature;
+  void Setup(const LayerProto& proto, int npartitions) override;
+  void ComputeFeature(Phase phase, Metric *perf) override;
+  //~RnnlmDataLayer();    //No need to write destructor function explicitly
+  int windowsize() const {
+    return windowsize_;
+  }
+
+  int classsize() const {
+    return classsize_;
+  }
+
+  int vocabsize() const {
+    return vocabsize_;
+  }
+
+  Blob<int> * classinfo(){
+    return & classinfo_;
+  }
+
+ private:
+  int windowsize_;  //there is a field "batchsize_" as a member of DataLayer
+  shared_ptr<DataShard> classshard_;
+  shared_ptr<DataShard> wordshard_;
+  int classsize_;
+  int vocabsize_;
+  Blob<int> classinfo_; //For each class index, info: start vocab_index, end vocab_index
+  vector<Record> classrecords_; //used for processing class records; The member "records_" in DataLayer is specified for use of WordRecords here
+};
+
+/********** end line for RNNLM example **********/
+
 class LabelLayer: public ParserLayer {
  public:
   using ParserLayer::ParseRecords;
@@ -358,7 +592,6 @@ class TanhLayer: public Layer {
  private:
   float outer_scale_, inner_scale_;
 };
-
 
 }  // namespace singa
 

@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include "utils/common.h"
 #include "proto/job.pb.h"
+#include "proto/user.pb.h"
 #include "proto/singa.pb.h"
 #include "utils/cluster_rt.h"
 

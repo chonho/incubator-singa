@@ -7,6 +7,7 @@
 #include <string>
 
 #include "proto/job.pb.h"
+#include "proto/user.pb.h"
 #include "neuralnet/layer.h"
 #include "utils/factory.h"
 #include "utils/graph.h"

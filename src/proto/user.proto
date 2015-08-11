@@ -1,0 +1,78 @@
+package singa;
+
+import "job.proto";
+import "common.proto";
+
+extend Record {
+  optional WordClassRecord wordclass = 101;
+  optional SingleWordRecord singleword = 102;
+}
+
+
+message WordClassRecord {
+  optional int32 class_index = 1; // the index of this class
+  optional int32 start = 2; // the index of the start word in this class;
+  optional int32 end = 3; // the index of the end word in this class
+}
+
+message SingleWordRecord {
+  optional string word = 1;
+  optional int32 word_index = 2;   // the index of this word in the vocabulary
+  optional int32 class_index = 3;   // the index of the class corresponding to this word
+}
+
+//For implementation of RNNLM application
+extend LayerProto {
+  optional RnnlmComputationProto rnnlmcomputation_conf = 201;
+  optional RnnlmSigmoidProto rnnlmsigmoid_conf = 202;
+  optional RnnlmInnerproductProto rnnlminnerproduct_conf = 203;
+  optional RnnlmWordinputProto rnnlmwordinput_conf = 204;
+  optional RnnlmDataProto rnnlmdata_conf = 207;
+}
+
+// 1-Message that stores parameters used by RnnlmComputationLayer
+message RnnlmComputationProto {
+  // use bias vector or not
+  optional bool bias_term = 1 [default = true];
+}
+
+// 2-Message that stores parameters used by RnnlmSigmoidLayer
+message RnnlmSigmoidProto {
+  // use bias vector or not
+  optional bool bias_term = 1 [default = true];
+}
+
+// 3-Message that stores parameters used by RnnlmInnerproductLayer
+message RnnlmInnerproductProto {
+  // number of outputs for the layer
+  required int32 num_output = 1;
+  // use bias vector or not
+  optional bool bias_term = 30 [default = true];
+}
+
+// 4-Message that stores parameters used by RnnlmWordinputLayer
+message RnnlmWordinputProto {
+  // vector length for each input word
+  required int32 word_length = 1;
+  // use bias vector or not
+  optional bool bias_term = 30 [default = true];
+}
+
+// 5-Message that stores parameters used by RnnlmWordparserLayer - nothing needs to be configured
+//message RnnlmWordparserProto {
+//}
+
+// 6-Message that stores parameters used by RnnlmClassparserLayer - nothing needs to be configured
+//message RnnlmClassparserProto {
+//}
+
+  
+
+message RnnlmDataProto {
+   // path to the data file/folder, absolute or relative to the workspace
+   required string class_path = 1;
+   required string word_path = 2;
+   // window size.
+  required int32 window_size = 3;
+}
+
