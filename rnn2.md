@@ -1,22 +1,21 @@
-# RNN for Language Modeling
+# Recurrent Neural Network (RNN) for Language Modeling
 ----
 
 ## Overall Framework  
 
-The whole RNN language model implemented in SINGA can be seen in Figure (?). In this model, given the current input word, the next 
-word is predicted, and the training objective is to maximize the probability of predicting the next word correctly. The performance metric - perplexity per word is employed in this language model. It should be noted that minimizing the perplexity value is equivalent to maximizing the probability of correct prediction. Please refer to this [page] [1] to find more about perplexity.
+The whole RNN language model implemented in SINGA can be seen in Figure (?). In this model, given a sequence of input words, the next word is predicted, and the training objective is to maximize the probability of predicting the next word correctly. The performance metric - perplexity per word is employed in this language model. It should be noted that minimizing the perplexity value is equivalent to maximizing the probability of correct prediction. Please refer to [this page] [1] to find more about perplexity.
 
-In this RNN language model, 7 layers are implemented specific for this application, including 1 data layer which will fetch data records from the data shard below, 2 parser layers, 3 neuron layers and 1 loss layer ([more details for layers][2]). After illustrating the data shard and how to create the data shard for this application, we will dicuss the configuration and functionality of each layer layer-wise as follows.
+In this RNN language model, 7 layers are implemented specific for this application, including 1 data layer which will fetch data records from the data shard below, 2 parser layers, 3 neuron layers and 1 loss layer ([more details for layers][2]). First, we illustrate the data shard and how to create it for this application. Then, we dicuss the configuration and functionality of layers.
 
 
 
 ## Data Shard
 
-Example files for RNN can be found in "SINGA_ROOT/examples/rnnlm", which we assume to be WORKSPACE.
+Example files for RNNLM can be found in "SINGA_ROOT/examples/rnnlm", which we assume to be WORKSPACE.
 
 (a) Define your own record. Please refer to [Data Preparation][3] for details.
 
-Records for RNN example are defined in "user.proto" as an extension.
+Records for RNNLM example are defined in "user.proto" as an extension.
 
     package singa;
 
@@ -50,16 +49,16 @@ The raw data is stored in a folder "rnnlm-0.4b/train" and "rnnlm-0.4b/test".
 
 (c) Create data shard for training and testing
 
-Data shards (e.g., "shard.dat") will be created in "rnnlm_class_shard", "rnnlm_vocab_shard", "rnnlm_word_shard_train" and "rnnlm_word_shard_test" by a command
+Data shards (e.g., "shard.dat") will be created in folders "rnnlm_class_shard", "rnnlm_vocab_shard", "rnnlm_word_shard_train" and "rnnlm_word_shard_test" by a command
 
     make create
+
 
 ## Layers' Configuration and Functionality
 
 Similar to records, layers are also defined in "user.proto" as an extension.
 
 Firstly, we need to add the layer types for this application, then for the layers with special configuration requirements, a new configuration field is added in the configuration file. In this language model, we have 5 layers with special requirements as follows.
-
 
     package singa;
 
@@ -75,15 +74,15 @@ Firstly, we need to add the layer types for this application, then for the layer
         optional RnnlmDataProto rnnlmdata_conf = 207;
     }
 
-Then for each layer, the detailed configuration and functioanlity information are discusses below.
+Then, the detailed configuration and functioanlity information of the layers are discusses below.
 
 ### RnnlmDataLayer
 
 #### Configuration
 
-In order to improve the computation speed when predicting the next word, all words in the vocabulary are divided into classes. Then during the prediction process, firstly the class of the next word is predicted. Next, inside the predicted class, the next word is predicted.
+In order to improve the computation speed of word prediction, all words in the vocabulary are divided into classes. During the prediction process, firstly the class of the next word is predicted. Then, the next word is predicted within the predicted class.
 
-This RnnlmDataLayer is in charge of reading the information from both a class shard and a word shard. Then a parameter - window_size is configured in this layer. Some important configuration parameters in this layer (set in [job.proto][5]) are shown below.
+RnnlmDataLayer is in charge of reading the information from both a class shard and a word shard. Then, a parameter "window_size" is configured in this layer. Some important configuration parameters in this layer (set in [job.proto][5]) are shown below.
 
     message RnnlmDataProto {
         required string class_path = 1;   // path to the data file/folder, absolute or relative to the workspace
@@ -93,7 +92,7 @@ This RnnlmDataLayer is in charge of reading the information from both a class sh
 
 #### Functionality
 
-In setup phase, this layer first constructs the mapping information between classes and words by reading information from ClassShard. Then in order to maintain the consistency of operations for each training iteration, it maintains a record vector (length of window_size + 1) and then reads 1st record from the WordShard and puts it in the last position of record vector.
+In setup phase, this layer first constructs the mapping information between classes and words by reading information from ClassShard. For the consistency of operations at each training iteration, it maintains a record vector (length of window_size + 1). It reads the 1st record from the WordShard and puts it in the last position of record vector.
 
     void RnnlmDataLayer::Setup() {
     	Assign values to classinfo_;	//Mapping information between classes and words
@@ -104,7 +103,7 @@ In setup phase, this layer first constructs the mapping information between clas
 After setting up this layer, the forward computation phase begins.
 
     void RnnlmDataLayer::ComputeFeature() {
-		records_[0] = records_[windowsize_];	//Copy the last record to 1st position in the record vector
+	records_[0] = records_[windowsize_];	//Copy the last record to 1st position in the record vector
         Assign values to records_;	//Read window_size new word records from WordShard
     }
 
@@ -112,10 +111,10 @@ After setting up this layer, the forward computation phase begins.
 ### RnnlmWordParserLayer
 
 #### Configuration
-This layer is in charge of reading word records from RnnlmDataLayer and then passes the records to the neuron layers above. We will configure the name, type and srclayers for this parser layer. More details of this layer's configuration can be seen in [job.conf][6].
+This layer is in charge of reading word records from RnnlmDataLayer and then passes the records to the neuron layers above. We will configure the "name", "type" and "srclayers" for this parser layer. More details of this layer's configuration can be seen in [job.conf][6].
 
 #### Functionality
-In setup phase, this layer obtains the window size and vocabulary size from its source layer RnnlmDataLayer, and then reshape the data in this layer specific to its functionality.
+In setup phase, this layer obtains the window size and vocabulary size from its source layer (i.e., RnnlmDataLayer) and then reshapes the data in this layer specific to its functionality.
 
     void RnnlmWordparserLayer::Setup(){
         windowsize_ = static_cast<RnnlmDataLayer*>(srclayers_[0])->windowsize();	//Obtain window size
@@ -123,7 +122,7 @@ In setup phase, this layer obtains the window size and vocabulary size from its 
         data_.Reshape(vector<int>{windowsize_}); 	//Reshape data
     }
 
-After setting up this layer, this parser layer fetches the first window_size number of word records from RnnlmDataLayer and store them as data. The details can be seen below.
+After being set up, this parser layer fetches the "window_size" number of word records from RnnlmDataLayer and stores them as data. The details can be seen below.
 
     void RnnlmWordparserLayer::ParseRecords(){
         for(int i = 0; i < records.size() - 1; i++){	//The first window_size records
@@ -134,10 +133,10 @@ After setting up this layer, this parser layer fetches the first window_size num
 ### RnnlmClassParserLayer
 
 #### Configuration
-This layer fetches the class information (the mapping information between classes and words) from RnnlmDataLayer and maintains this information as the data in this layer.
+This layer fetches the class information (the mapping information between classes and words) from RnnlmDataLayer and maintains this information as data in this layer.
 
 #### Functionality
-In setup phase, this layer obtains the window size, vocabulary size and class size from its source layer RnnlmDataLayer, and then reshapes the data in this layer according to the needs.
+In setup phase, this layer obtains the window size, vocabulary size and class size from its source layer (i.e., RnnlmDataLayer) and then reshapes the data in this layer according to the needs.
 
     void RnnlmClassparserLayer::Setup(const LayerProto& proto, int npartitions){
       windowsize_ = static_cast<RnnlmDataLayer*>(srclayers_[0])->windowsize();	//Obtain window size
@@ -146,7 +145,7 @@ In setup phase, this layer obtains the window size, vocabulary size and class si
       data_.Reshape(vector<int>{windowsize_, 4});	//Reshape data
     }
 
-Next, this layer parses the last window_size number of word records from RnnlmDataLayer and store them as data. Then for each input word, this layer retrieves its corresponding class, and then stores the starting word index of this class, ending word index of this class, word index and class index respectively.
+Next, this layer parses the last "window_size" number of word records from RnnlmDataLayer and stores them as data. Then, it retrieves the corresponding class for each input word. It stores the starting word index of this class, ending word index of this class, word index and class index respectively.
 
     void RnnlmClassparserLayer::ParseRecords(){
         float *data_dptr = data_.mutable_cpu_data();
@@ -162,7 +161,7 @@ Next, this layer parses the last window_size number of word records from RnnlmDa
 
 ### RnnlmWordInputLayer
 
-This layer is responsible for using the input word records, obtain corresponding word vectors as its data. Then this layer passes its data to RnnlmInnerProductLayer above for processing.
+Using the input word records, this layer obtains corresponding word vectors as its data. Then, it passes the data to RnnlmInnerProductLayer above for further processing.
 
 #### Configuration
 In this layer, the length of each word vector needs to be configured. Besides, whether to use bias term during the training process should also be configured (See more in [job.proto][5]).
@@ -173,9 +172,9 @@ In this layer, the length of each word vector needs to be configured. Besides, w
     }
 
 #### Functionality
-In setup phase, this layer first reshapes its members: data, grad, and weight matrix. Then RnnlmWordInputLayer obtains the vocabulary size value from its source layer RnnlmWordParserLayer. 
+In setup phase, this layer first reshapes its members such as "data", "grad", and "weight" matrix. Then, it obtains the vocabulary size from its source layer (i.e., RnnlmWordParserLayer).
 
-Then in the forward phase of this layer, the member data is obtained. To be specific, by using the window_size number of input word indice, window_size number of word vectors are selected from this layer's weight matrix, each word index corresponding to one row.
+In the forward phase, using the "window_size" number of input word indices, the "window_size" number of word vectors are selected from this layer's weight matrix, each word index corresponding to one row.
 
     void RnnlmWordinputLayer::ComputeFeature(Phase phase, Metric* perf) {
         for(int t = 0; t < windowsize_; t++){
@@ -183,7 +182,7 @@ Then in the forward phase of this layer, the member data is obtained. To be spec
         }
     }
 
-In the backward phase, after computing this layer's gradient in its destination layer RnnlmInnerProductLayer, here the gradient of the weight matrix in this layer is copied (by row corresponding to word indice) from this layer's grad.
+In the backward phase, after computing this layer's gradient in its destination layer (i.e., RnnlmInnerProductLayer), here the gradient of the weight matrix in this layer is copied (by row corresponding to word indices) from this layer's grad.
 
     void RnnlmWordinputLayer::ComputeGradient(Phase phas) {   
         for(int t = 0; t < windowsize_; t++){
@@ -206,13 +205,13 @@ In this layer, the number of neurons needs to be specified. Besides, whether to 
 
 #### Functionality
 
-In the forward phase, this layer is in charge of executing the dot multiplication between its weight matrix and the data in its source layer (RnnlmWordInputLayer).
+In the forward phase, this layer is in charge of executing the dot multiplication between its weight matrix and the data in its source layer (i.e., RnnlmWordInputLayer).
 
     void RnnlmInnerproductLayer::ComputeFeature() {
         data = dot(src, weight);	//Dot multiplication operation
     }
     
-In the backward phase, this layer needs to first compute the gradient of its source layer, i.e., RnnlmWordInputLayer; Then it needs to compute the gradient of its weight matrix by aggregating computation results for each timestamp. The details can be seen as follows.
+In the backward phase, this layer needs to first compute the gradient of its source layer (i.e., RnnlmWordInputLayer). Then, it needs to compute the gradient of its weight matrix by aggregating computation results for each timestamp. The details can be seen as follows.
 
     void RnnlmInnerproductLayer::ComputeGradient() {
         for (int t = 0; t < windowsize_; t++) {
@@ -235,7 +234,7 @@ In this layer, whether to use a bias term needs to be specified.
 
 #### Functionality
 
-In the forward phase, this RnnlmSigmoidLayer first receives data from its source layer RnnlmInnerProductLayer which is used as one part input for computation. Then for each timestampe this RnnlmSigmoidLayer executes a dot multiplication between its previous timestamp information and its own weight matrix. The results are the other part for computation. Then this layer sums these two parts together and executes an activation operation. The detailed descriptions for this process are illustrated as follows.
+In the forward phase, this ayer first receives data from its source layer (i.e., RnnlmInnerProductLayer) which is used as one part input for computation. Then, for each timestampe this layer executes a dot multiplication between its previous timestamp information and its own weight matrix. The results are the other part for computation. This layer sums these two parts together and executes an activation operation. The detailed descriptions for this process are illustrated as follows.
 
     void RnnlmSigmoidLayer::ComputeFeature(Phase phase, Metric* perf) {
         for(int t = 0; t < window_size; t++){
@@ -273,7 +272,7 @@ In this layer, it is needed to specify whether to use a bias term during trainin
 
 #### Functionality
 
-In the forward phase, by using the two sliced weight matrices (one is for class information, the other is for the words in this class), this RnnlmComputationLayer calculates the dot multiplication between the source layer's input and the sliced matrices. The results can be denoted as y1 and y2. Then after a softmax function, for each input word, the probability distribution of classes and the words in this classes are computed. The activated results can be denoted as p1 and p2. Next, using the probability distribution, the PPL value is computed.
+In the forward phase, by using the two sliced weight matrices (one is for class information, another is for the words in this class), this RnnlmComputationLayer calculates the dot multiplication between the source layer's input and the sliced matrices. The results can be denoted as "y1" and "y2". Then after a softmax function, for each input word, the probability distribution of classes and the words in this classes are computed. The activated results can be denoted as p1 and p2. Next, using the probability distribution, the PPL value is computed.
 
     void RnnlmComputationLayer::ComputeFeature() {
         Compute y1 and y2;
@@ -283,7 +282,7 @@ In the forward phase, by using the two sliced weight matrices (one is for class 
     }
     
     
-In the backward phase, this layer executes the following three computation operations. First, it computes the member gradient of the current layer by each timestamp. Second, this layer computes the gradient of its own weight matrix by aggregating calculated results from all timestamps. Third, it computes the gradient of its source layer, RnnlmSigmoidLayer timestamp-wise.
+In the backward phase, this layer executes the following three computation operations. First, it computes the member gradient of the current layer by each timestamp. Second, this layer computes the gradient of its own weight matrix by aggregating calculated results from all timestamps. Third, it computes the gradient of its source layer, RnnlmSigmoidLayer, timestamp-wise.
         
     void RnnlmComputationLayer::ComputeGradient(){
     	Compute grad[t] for all timestamps;
