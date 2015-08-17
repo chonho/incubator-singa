@@ -807,8 +807,6 @@ void RnnlmComputationLayer::Setup(const LayerProto& proto, int npartitions) {
     weight_ = factory->Create(proto.param(0).type());
     weight_->Setup(proto.param(0), vector<int>{hdim_, vdim_});  // (10010, 30)Need to transpose the original weight matrix for the slicing part
     //sum_log10 = 0.0;  //TODO kaiping: to delete later
-    // chonho
-    LOG(ERROR) << hdim_ << "  " << vdim_;
 }
 
 void RnnlmComputationLayer::ComputeFeature(Phase phase, Metric* perf) {
@@ -1068,7 +1066,7 @@ void RnnlmSigmoidLayer::ComputeGradient(Phase phase){
     //LOG(ERROR) << "Backward Phase: Sum value of weight data: " << weight_->mutable_data()->asum_data();
     //LOG(ERROR) << "Backward Phase: Sum value of weight grad: " << weight_->mutable_grad()->asum_data();
     //LOG(ERROR) << "Backward Phase: Sum value of data: " << data_.asum_data();
-    //LOG(ERROR) << "Backward Phase: Sum value of grad: " << grad_.asum_data();
+    //LOG(ERROR) << "Backward phase: Sum value of grad: " << grad_.asum_data();
 }
 
 
@@ -1100,7 +1098,7 @@ void RnnlmInnerproductLayer::ComputeFeature(Phase phase, Metric* perf) {
     data = dot(src, weight);
     //LOG(ERROR) << "----------This is inner product layer----------";  //TODO kaiping: to delete later
     //LOG(ERROR) << "Backward Phase: Sum value of data: " << data_.asum_data();
-    //LOG(ERROR) << "Backward Phase: Sum value of grad: " << grad_.asum_data();
+    //LOG(ERROR) << "Bacpkward Phase: Sum value of grad: " << grad_.asum_data();
 }
 
 void RnnlmInnerproductLayer::ComputeGradient(Phase phas) {
@@ -1212,7 +1210,8 @@ void RnnlmWordparserLayer::ParseRecords(Phase phase, const vector<Record>& recor
         //data_[i] = records[i].word_record().word_index();
         data_dptr[i] = records[i].GetExtension(singleword).word_index();
     }
-    //LOG(ERROR) << "This is word parser layer";    //TODO kaiping: to delete later
+    //LOG(ERROR) << "----------This is wordparser layer----------";  //TODO kaiping: to delete later
+
 }
 
 /*********** 6-Implementation for RnnlmClassparserLayer **********/
@@ -1228,8 +1227,9 @@ void RnnlmClassparserLayer::ParseRecords(Phase phase, const vector<Record>& reco
     float *data_dptr = data_.mutable_cpu_data();
     //Blob<int> *class_info_ptr = (static_cast<RnnlmDataLayer*>(srclayers_[0])->classinfo());
     int *class_info_ptr_tmp = (static_cast<RnnlmDataLayer*>(srclayers_[0])->classinfo())->mutable_cpu_data();
+    singa::SingleWordRecord swr;
     for(int i = 1; i < records.size(); i++){//The last windowsize_ records in input "windowsize_ + 1" records
-        singa::SingleWordRecord swr = records[i].GetExtension(singleword);
+        swr = records[i].GetExtension(singleword);
         int tmp_class_idx = swr.class_index();
         //data_[i][0] = (*(static_cast<RnnlmDataLayer*>(srclayers_[0])->classinfo()))[tmp_class_idx][0];
         data_dptr[4 * (i - 1) + 0] = class_info_ptr_tmp[2 * tmp_class_idx + 0];
@@ -1240,10 +1240,11 @@ void RnnlmClassparserLayer::ParseRecords(Phase phase, const vector<Record>& reco
         //data_[i][3] = tmp_class_idx;
         data_dptr[4 * (i - 1) + 3] = tmp_class_idx;
         //LOG(ERROR) << "Test class parser information: (start, end, word_idx, end_idx): ";
-        //LOG(ERROR) << "( " << data_dptr[4 * (i - 1) + 0] << " , " << data_dptr[4 * (i - 1) + 1] << " , " << data_dptr[4 * (i - 1) + 2] << " , " << data_dptr[4 * (i - 1) + 3] << " )";
+        //chonho
+	//LOG(ERROR) << data_dptr[4 * (i - 1) + 2] << " , " << data_dptr[4 * (i - 1) + 3];
+	//LOG(ERROR) << "( " << data_dptr[4 * (i - 1) + 0] << " , " << data_dptr[4 * (i - 1) + 1] << " , " << data_dptr[4 * (i - 1) + 2] << " , " << data_dptr[4 * (i - 1) + 3] << " )";
     }
     //LOG(ERROR) << "This is class parser layer";   //TODO kaiping: to delete later
-	// chonho class label correct???
 }
 
 /*********** 7-Implementation for RnnlmDataLayer **********/
@@ -1300,7 +1301,7 @@ void RnnlmDataLayer::ComputeFeature(Phase phase, Metric* perf){
         //<< records_[i].word_record().word_index() << " classIndex: " << records_[i].word_record().class_index();
 	}
 	if (flag == true) break;
-}
+  }
     //LOG(ERROR) << "This is data layer";   //TODO kaiping: to delete later
 }
 
