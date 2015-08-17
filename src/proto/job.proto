@@ -197,6 +197,8 @@ message LayerProto {
   optional int32 partition_dim = 60 [default = -1];
   // names of parameters shared from other layers
   optional int32 partition_id = 90 [default = 0];
+
+  extensions 200 to 299;
 }
 
 
@@ -501,6 +503,15 @@ enum LayerType {
   kBridgeSrc = 15;
   kSlice = 12;
   kSplit = 13;
+
+  kRnnlmComputation = 26;
+  kRnnlmSigmoid = 27;
+  kRnnlmInnerproduct = 28;
+  kRnnlmWordinput = 29;
+  kRnnlmClassparser = 30;
+  kRnnlmWordparser = 31;
+  kRnnlmData = 32;
+
 }
 
 enum PartitionType {

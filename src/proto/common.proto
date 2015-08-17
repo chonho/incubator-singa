@@ -74,6 +74,8 @@ message Record {
   optional Type type = 1 [default = kSingleLabelImage];
   // configuration for
   optional SingleLabelImageRecord image = 2;
+
+  extensions 100 to 199;
 }
 
 message SingleLabelImageRecord {

@@ -35,6 +35,15 @@ void Driver::Init(int argc, char **argv) {
   RegisterLayer<TanhLayer>(kTanh);
   RegisterLayer<RBMVisLayer>(kRBMVis);
   RegisterLayer<RBMHidLayer>(kRBMHid);
+  
+  RegisterLayer<RnnlmComputationLayer>(kRnnlmComputation);
+  RegisterLayer<RnnlmSigmoidLayer>(kRnnlmSigmoid);
+  RegisterLayer<RnnlmInnerproductLayer>(kRnnlmInnerproduct);
+  RegisterLayer<RnnlmWordinputLayer>(kRnnlmWordinput);
+  RegisterLayer<RnnlmClassparserLayer>(kRnnlmClassparser);
+  RegisterLayer<RnnlmWordparserLayer>(kRnnlmWordparser);
+  RegisterLayer<RnnlmDataLayer>(kRnnlmData);
+
 #ifdef USE_LMDB
   RegisterLayer<LMDBDataLayer>(kLMDBData);
 #endif
