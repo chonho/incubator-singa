@@ -12,6 +12,9 @@ parsing RGB values, doing convolution transformation, etc.
 
 ## Configuration
 
+Configurations of three layers from the [MLP example]({{ BASE_PATH }}/docs/mlp)
+are shown above.
+
     layer {
       name: "data"
       type: kShardData
@@ -34,29 +37,26 @@ parsing RGB values, doing convolution transformation, etc.
       param{ }
     }
 
-The configurations of three layers from the [MLP example]({{ BASE_PATH }}/docs/mlp)
-are shown above. There are some common fields for all kinds of layers:
+There are some common fields for all kinds of layers:
 
-  * name, a string used to differentiate two layers
-  * type, an integer used for identifying a Layer subclass. The types of built-in
+  * name: a string used to differentiate two layers.
+  * type: an integer used for identifying a Layer subclass. The types of built-in
   layers are listed in [LayerType](). User-defined subclasses must not use the
   type ID of built-in subclasses.
-  * srclayers, one or more layer names, for identifying the source layers.
+  * srclayers: one or more layer names, for identifying the source layers.
   In SINGA, all connections are [converted]({{ BASE_PATH }}/docs/neural-net) to directed connections.
-  * exclude, an enumerate value of type [Phase](), can be {kTest, kValidation,
+  * exclude: an enumerate value of type [Phase](), can be {kTest, kValidation,
   kTrain}. It is used to filter this layer when creating the
   [NeuralNet]({{ BASE_PATH }}/docs/neural-net) for the excluding phase. E.g.,
   the "data" layer would be filtered when creating the NeuralNet instance for test phase.
-  * param, configuration for a [Param]({{ BASE_PATH }}/docs/param) instance.
+  * param: configuration for a [Param]({{ BASE_PATH }}/docs/param) instance.
   There can be multiple Param objects in one layer.
-  * partition_dim, integer value indicating the partition dimension of this
+  * partition_dim: integer value indicating the partition dimension of this
   layer. -1 (the default value) for no partitioning, 0 for partitioning on batch dimension, 1 for
   partitioning on feature dimension. It is used by
   [CreateGraph]({{ BASE_PATH }}/docs/neural-net) for partitioning the neural net.
 
-Different layers may have different configurations, these configurations are in
-defined in `<type>_conf`, which is for a specific layer with type `<type>`,
-e.g., the "data" layer has `sharddata_conf` and "fc1" layer has
+Different layers may have different configurations, and these configurations are defined in `<type>_conf`, which is for a specific layer with type `<type>`, e.g., the "data" layer has `sharddata_conf` and "fc1" layer has
 `innerproduct_conf`. The specific configurations of built-in layers will be described at the end of this page.
 
 ## Base Layer class
@@ -147,7 +147,7 @@ google protocol message `FooProto` should be defined,
     }
 
     extend LayerProto {
-      optional FooProto foo_conf = 101;  // unique field id, reserved for users
+      optional FooProto foo_conf = 101;  // unique field id, reserved for extensions
     }
 
 In addition, users need to extend the original `LayerProto`
@@ -180,7 +180,7 @@ and `user.pb.h` files. The layer configuration is like,
 
 ### Layer subclasses
 
-The new layer subclass can be defined following the built-in layer subclasses.
+The new layer subclass can be defined as the following the built-in layer subclasses.
 
     class FooLayer : public Layer {
      public:
