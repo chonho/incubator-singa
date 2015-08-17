@@ -161,6 +161,11 @@ new layers, then each layer that has specific configurations would have a
       extensions 101 to max;
     }
 
+In users' code, the extension fields can be accessed via,
+
+    auto conf = layer_proto_.GetExtension(foo_conf);
+    int a = conf.a();
+
 With user.proto defined, users can use [protoc]() to generate the `user.pb.cc`
 and `user.pb.h` files. The layer configuration is like,
 
@@ -172,10 +177,6 @@ and `user.pb.h` files. The layer configuration is like,
       }
     }
 
-In users' code, the extension fields can be accessed via,
-
-    auto conf = layer_proto_.GetExtension(foo_conf);
-    int a = conf.a();
 
 ### Layer subclasses
 
