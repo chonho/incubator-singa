@@ -127,7 +127,7 @@ displayed periodically.
 ## Implementing new layers
 
 Users can extend the base layer class to implement their own feature transformation
-logics  as long as the two virtual functions are overridden to be consistent with
+logics as long as the two virtual functions are overridden to be consistent with
 the `TrainOneBatch` function. The `Setup` function may also be overridden to
 read specific layer configuration.
 
@@ -141,13 +141,13 @@ google protocol message `FooProto` should be defined,
     # in user.proto
     package singa
     import "job.proto"
-    FooProto {
+    message FooProto {
       // specific fields to the FooLayer
       optional int32 a = 1;
     }
 
     extend LayerProto {
-      optional FooProto foo_conf = 101;
+      optional FooProto foo_conf = 101;  // unique field id, reserved for users
     }
 
 In addition, users need to extend the original `LayerProto`
@@ -167,14 +167,14 @@ and `user.pb.h` files. The layer configuration is like,
     layer {
       name: "foo"
       type: kFoo # must not be the same with any built-in layer
-      [foo_conf] { # note there is a pair of [] extension fields
+      [singa.foo_conf] { # note there is a pair of [] for extension fields
         a: 10
       }
     }
 
 In users' code, the extension fields can be accessed via,
 
-    auto conf = layer_proto_.getExtension(foo_conf);
+    auto conf = layer_proto_.GetExtension(foo_conf);
     int a = conf.a();
 
 ### Layer subclasses
@@ -226,7 +226,7 @@ ShardData layer is used to read data from disk etc.
 	layer
 	{
 		name:"data"
-		type:"kShardData"
+		type:kShardData
 		data_param
 		{
 			path:"Shard_File_Path"
@@ -242,7 +242,7 @@ batchsize means the quantity of the input disposable
     layer
     {
     	name:"data"
-    	type:"kLMDBDate"
+    	type:kLMDBDate
     	data_param
     	{
     		path:"LMDB_FILE_PATH"
@@ -261,7 +261,7 @@ Label layer is used to extract the label information from training data. The lab
     layer
     {
     	name:"label"
-    	type:"kLabel"
+    	type:kLabel
     	srclayers:"data"
     }
 
@@ -272,7 +272,7 @@ MnistImage is a pre-processing layer for MNIST dataset.
     layer
     {
     	name:"mnist"
-    	type:"kMnistImage"
+    	type:kMnistImage
     	srclayers:"data"
     	mnist_param
     	{
@@ -294,7 +294,7 @@ RGBImage layer is a pre-processing layer for RGB format images.
     layer
     {
     	name:"rgb"
-    	type:"kRGBImage"
+    	type:kRGBImage
     	srclayers:"data"
     	rgbimage_param
     	{
@@ -308,7 +308,7 @@ Prefetch Layer is used to pre-fetch data from disk. It ensures that the I/O task
     layer
     {
     	name:"prefetch"
-    	type:"kPrefetch"
+    	type:kPrefetch
     	sublayers
     	{
     		name:"data"
@@ -322,7 +322,7 @@ Prefetch Layer is used to pre-fetch data from disk. It ensures that the I/O task
     	sublayers
     	{
     		name:"rgb"
-    		type:"kRGBImage"
+    		type:kRGBImage
     		srclayers:"data"
     		rgbimage_param
     		{
@@ -332,7 +332,7 @@ Prefetch Layer is used to pre-fetch data from disk. It ensures that the I/O task
     	sublayers
     	{
     		name:"label"
-    		type:"kLabel"
+    		type:kLabel
     		srclayers:"data"
     	}
     	exclude:kTrain|kValidation|kTest|kPositive|kNegative
@@ -348,7 +348,7 @@ Convolution layer is a basic layer used in constitutional neural net. It is used
     layer
     {
     	name:"Conv_Number"
-    	type:"kConvolution"
+    	type:kConvolution
     	srclayers:"Src_Layer_Name"
     	convolution_param
     	{
@@ -398,7 +398,7 @@ H = W*V + B // W and B are its weight and bias parameter
     layer
     {
     	name:"IP_Number"
-    	type:"kInnerProduct"
+    	type:kInnerProduct
     	srclayers:"Src_Layer_Name"
     	inner_product_param
     	{
@@ -433,7 +433,7 @@ Average Pooling scans all the values in the window to calculate the average valu
     layer
     {
     	name:"Pool_Number"
-    	type:"kPooling"
+    	type:kPooling
     	srclayers:Src_Layer_Name"
     	pooling_param
     	{
@@ -453,7 +453,7 @@ Average Pooling scans all the values in the window to calculate the average valu
     layer
     {
     	name:"Relu_Number"
-    	type:"kReLU"
+    	type:kReLU
     	srclayers:"Src_Layer_Name"
     }
 
@@ -463,7 +463,7 @@ Tanh uses the tanh as activation function. It transforms the input into range [-
     layer
     {
     	name:"Tanh_Number"
-    	type:"kTanh"
+    	type:kTanh
     	srclayer:"Src_Layer_Name"
     }
 
@@ -480,7 +480,7 @@ pe 1 x local_size x local_size). Each input value is divided by ![](http://i.img
     layer
     {
     	name:"Norm_Number"
-    	type:"kLRN"
+    	type:kLRN
     	lrn_param
     	{
     		norm_region:WITHIN_CHANNEL|ACROSS_CHANNELS
@@ -502,7 +502,7 @@ Softmax Loss Layer is the implementation of multi-class softmax loss function. I
     layer
     {
     	name:"loss"
-    	type:"kSoftmaxLoss"
+    	type:kSoftmaxLoss
     	softmaxloss_param
     	{
     		topk:int
