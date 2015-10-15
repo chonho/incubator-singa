@@ -2,6 +2,7 @@ ACLOCAL_AMFLAGS = -I config
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
 #AM_CPPFLAGS = -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/include
 
 MSHADOW_FLAGS = -DMSHADOW_USE_CUDA=0 -DMSHADOW_USE_CBLAS=1 -DMSHADOW_USE_MKL=0
 DEFAULT_FLAGS = -Wall -pthread -fPIC -std=c++11 -Wno-unknown-pragmas \
@@ -11,7 +12,7 @@ CFLAGS = $(DEBUG)
 CXXFLAGS = $(DEBUG)
 AC_CXXFLAGS = $(DEBUG)
 
-INCLUDES = -I$(top_srcdir)/include
+#INCLUDES = -I$(top_srcdir)/include
 
 PROTOS := $(top_srcdir)/src/proto/singa.proto \
           $(top_srcdir)/src/proto/job.proto \
@@ -27,6 +28,7 @@ PROTO_PYS := tool/pb2/singa_pb2.py \
              tool/pb2/common_pb2.py
 
 SINGA_SRCS := src/driver.cc \
+              src/builder.cc \
               src/utils/cluster.cc \
               src/utils/cluster_rt.cc \
               src/utils/graph.cc \
@@ -49,6 +51,7 @@ SINGA_SRCS := src/driver.cc \
               src/comm/msg.cc
 
 SINGA_HDRS := include/singa.h \
+              include/builder.h \
               include/utils/cluster.h \
               include/utils/cluster_rt.h \
               include/utils/param.h \

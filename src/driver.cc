@@ -51,7 +51,7 @@ void Driver::Init(int argc, char **argv) {
   //  job conf passed by users as "-conf <path>"
   arg_pos = ArgPos(argc, argv, "-conf");
   CHECK_NE(arg_pos, -1);
-  ReadProtoFromTextFile(argv[arg_pos+1], &job_conf_);
+//  ReadProtoFromTextFile(argv[arg_pos+1], &job_conf_); // clee uncomment
 
   // register layers
   RegisterLayer<BridgeDstLayer, int>(kBridgeDst);

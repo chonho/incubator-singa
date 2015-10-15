@@ -43,6 +43,7 @@
  * easily, e.g., MLP(layer1_size, layer2_size, tanh, loss);
  */
 int main(int argc, char **argv) {
+
   // must create driver at the beginning and call its Init method.
   singa::Driver driver;
   driver.Init(argc, argv);
@@ -53,10 +54,21 @@ int main(int argc, char **argv) {
 
   // users can register new subclasses of layer, updater, etc.
 
+  // constract model and generate jobproto
+  // clee
+
+  singa::JobProto jobConf;
+  singa::Builder builder(&jobConf);
+  builder.CONV_ex3();
+  //builder.MLP_ex2();
+  //builder.Construct();
+  builder.Display();
+
   // get the job conf, and custmize it if need
-  singa::JobProto jobConf = driver.job_conf();
+  //singa::JobProto jobConf = driver.job_conf();
 
   // submit the job for training
   driver.Train(resume, jobConf);
+
   return 0;
 }

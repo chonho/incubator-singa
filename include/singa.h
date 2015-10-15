@@ -32,5 +32,6 @@
 #include "utils/singleton.h"
 #include "utils/factory.h"
 #include "./driver.h"
+#include "./builder.h"
 
 #endif  // SINGA_SINGA_H_

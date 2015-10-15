@@ -526,6 +526,11 @@ void BackwardAvgPooling(const float* top, const int num, const int channels,
   }
 }
 
+// clee 
+//void ReadProtoFromString(const string* configuration, Message* proto) {
+//  CHECK(google::protobuf::TextFormat::ParseFromString(configuration, proto));
+//}
+
 void ReadProtoFromTextFile(const char* filename, Message* proto) {
   int fd = open(filename, O_RDONLY);
   CHECK_NE(fd, -1) << "File not found: " << filename;
