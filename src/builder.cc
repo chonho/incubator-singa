@@ -48,7 +48,9 @@ void Builder::Init(JobProto* conf, const char* name) {
 
 void Builder::Construct() {
 
-  AUTOENCODER_ex1(); 
+  MLP_ex2(); 
+  //CONV_ex3();
+  //AUTOENCODER_ex1(); 
 
 }
 
@@ -327,6 +329,13 @@ void Builder::Display() {
   google::protobuf::TextFormat::PrintToString(*jobconf, &s);
   //google::protobuf::TextFormat::PrintToString(*netconf_, &s);
   printf("%s\n", s.c_str());
+}
+
+void Builder::Display_Layer() {
+  printf("-----\n");
+  for(int i=0; i<netconf->layer_size(); i++) {
+    printf("Layer %d: %s\n", i, netconf->mutable_layer(i)->name().c_str());
+  }
 }
 
 }  // namespace singa

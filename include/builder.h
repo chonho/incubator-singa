@@ -59,6 +59,7 @@ public:
   void AUTOENCODER_ex1();
 
   void Display();
+  void Display_Layer();
 
   int ShowLayer(LayerType type) {
     return (int)type;  
@@ -357,7 +358,7 @@ public:
     for(int i=0; i<static_cast<int>(out->size()); i++) {
       if(out->at(i)->type() == type) {
         AddParamProto(out->at(i), generateName(param_name, 1));
-        SetGaussianProto(generateName(param_name, 1), mean, std);
+        AddGaussianProto(generateName(param_name, 1), mean, std);
         uniqID[1]++;
       }
     }
@@ -396,7 +397,7 @@ public:
     }
   }
 
-  void SetGaussianProto(const char* param_name=nullptr,
+  void AddGaussianProto(const char* param_name=nullptr,
                        float mean=0.0, float std=1.0) {
     if(param_name!=nullptr) {
       ParamProto* pp = GetParamByName(param_name);
@@ -439,7 +440,7 @@ public:
                             float lr_scale=1, float wd_scale=1,
                             float mean=0, float std=1) {
     AddParamProto(layer, param_name, lr_scale, wd_scale);
-    SetGaussianProto(param_name, mean, std);
+    AddGaussianProto(param_name, mean, std);
   }
   // Param + ParamGenProto end ------------------------------------------
 

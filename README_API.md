@@ -85,7 +85,7 @@ void AddSliceProto(LayerProto* layer,  int dim)
 ```
 
 
-#### for OutputLayer
+#### for LossLayer
 ```
 void AddSoftmaxLossProto(LayerProto* layer, int topk=0, float scale=0.0)
 ```
@@ -98,14 +98,17 @@ void AddParamProto(LayerProto* layer, const char* param_name,
                    float lr_scale=1, float wd_scale=1)
 ```                   
 ```
-void SetParamProto(const char* param_name,
-                   float lr_scale=1, float wd_scale=1)
-```
-```
 template<class T>
-void SetParamProto(LayerProto* layer, int param_index,
-                   const char* key, T val)
-```                 
+void SetParamProto(LayerProto* layer, int param_index, const char* key, T val)
+
+void SetParamProto(vector<LayerProto*>* out, LayerType type, const char* param_name) 
+
+void SetParamProto(const char* param_name, float lr_scale=1, float wd_scale=1) 
+```
+
+```
+void SetParamAutoEncoder(vector<LayerProto*>* out) 
+```
 
 
 ```
@@ -113,17 +116,49 @@ ParamProto* GetParamByName(const char* param_name)
 ```
 
 #### for ParamGenProto
+```
+void AddConstantProto(const char* param_name=nullptr, float value=1.0)
+void AddUniformProto(const char* param_name=nullptr, float low=-1.0, float high=1.0)
+void AddGaussianProto(const char* param_name=nullptr, float mean=0.0, float std=1.0)
 
+```
+```
+template<class T>
+void SetConstantProto(LayerProto* layer, const char* key, T val)
+template<class T>
+void SetUniformProto(LayerProto* layer, const char* key, T val)
+template<class T>
+void SetGaussianProto(LayerProto* layer, const char* key, T val)
+```
+```
+void SetParamProtoConstant(vector<LayerProto*>* out, LayerType type,  const char* param_name,
+                          float lr_scale=1, float wd_scale=1, float value=0)
+void SetParamProtoUniform(vector<LayerProto*>* out, LayerType type, const char* param_name,
+                          float low, float high)
+void SetParamProtoGaussian(vector<LayerProto*>* out, LayerType type, const char* param_name,
+                          float mean, float std)
+```
 
 #### for Param + ParamGenProto
+```
+void AddParamConstantProto(LayerProto* layer, const char* param_name,
+                            float lr_scale=1, float wd_scale=1,
+                            float value=1)
 
-### Example MLP (Low flexibility)
+void AddParamUniformProto(LayerProto* layer, const char* param_name,
+                            float lr_scale=1, float wd_scale=1,
+                            float low=-1, float high=1)
+
+void AddParamGaussianProto(LayerProto* layer, const char* param_name,
+                            float lr_scale=1, float wd_scale=1,
+                            float mean=0, float std=1)
+```
+
+## Example MLP (Low flexibility, i.e., use default value)
 
 ```
   AddTrainAlgo(kBP);
-
   AddCluster("examples/mnist");
-
   AddUpdater(kSGD);
 
   LayerProto* L1 = AddLayer(kShardData);
