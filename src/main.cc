@@ -56,19 +56,16 @@ int main(int argc, char **argv) {
 
   // constract model and generate jobproto
   // clee
-
   singa::JobProto jobConf;
   singa::Builder builder(&jobConf);
-  builder.CONV_ex3();
-  //builder.MLP_ex2();
-  //builder.Construct();
+  builder.Construct();
   builder.Display();
 
   // get the job conf, and custmize it if need
   //singa::JobProto jobConf = driver.job_conf();
 
   // submit the job for training
-  driver.Train(resume, jobConf);
+  //driver.Train(resume, jobConf);
 
   return 0;
 }
