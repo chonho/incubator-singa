@@ -6,7 +6,7 @@ from job_pb2 import *
 from google.protobuf import text_format
 
 
-#----------- auto-generate it in MessageClass.py ???
+#TODO auto-generate it in MessageClass.py ???
 def enumInitMethod(key):
   if key == 'uniform': return kUniform
   if key == 'const': return kConstant
@@ -21,8 +21,7 @@ def enumChangeMethod(key):
   if key == 'step': return kStep
   if key == 'fixedstep': return kFixedStep
   return ''
-#----------- MessageClass.py ???
-
+#------------------
 
 class Model(object):
 
@@ -77,87 +76,37 @@ class Model(object):
 
 
 
-
-#----------- proto.py
-class FixedStep(object):
-  def __init__(self, **kwargs):
-    self.proto = FixedStepProto()
-    setval(self.proto, **kwargs)
-
-class Step(object):
-  def __init__(self, **kwargs):
-    self.proto = StepProto()
-    setval(self.proto, **kwargs)
-
-class Linear(object):
-  def __init__(self, **kwargs):
-    self.proto = LinearProto()
-    setval(self.proto, **kwargs)
-
 class Store(object):
   def __init__(self, **kwargs):
     self.proto = StoreProto()
     setval(self.proto, **kwargs)
 
-class RGBImage(object):
-  def __init__(self, **kwargs):
-    self.proto = RGBImageProto()
-    setval(self.proto, **kwargs)
-
-class ParamGen(object):
-  def __init__(self, **kwargs):
-    self.proto = ParamGenProto()
-    setval(self.proto, **kwargs) 
-
-class Alg(object):
-  def __init__(self, **kwargs):
-    self.proto = AlgProto()
-    setval(self.proto, **kwargs)
-
-class LRGen(object):
-  def __init__(self, **kwargs):
-    self.proto = LRGenProto()
-    setval(self.proto, **kwargs) 
-
-class LRN(object):
-  def __init__(self, **kwargs):
-    self.proto = LRNProto()
-    setval(self.proto, **kwargs) 
-
-class Updater(object):
-  def __init__(self, **kwargs):
-    self.proto = UpdaterProto()
-    setval(self.proto, **kwargs)
-#----------- proto.py
-
-
-
-
-class Algorithm(Alg):
+class Algorithm(object):
   def __init__(self, type=kBP, **kwargs):
-    super(Algorithm, self).__init__(alg=type, **kwargs) 
+    alg = Message('Alg', alg=type, **kwargs).proto
     if type == kCD:
-      setval(self.proto.cd_conf, **kwargs)
+      setval(alg.cd_conf, **kwargs)
+    self.proto = alg
 
-
-class SGD(Updater):
+class SGD(object):
   def __init__(self, lr=0.01, lr_type=None, lr_conf=None,
                step=[0], step_lr=[0.01],
                **kwargs):
-    super(SGD, self).__init__(type=kSGD, **kwargs)
+    upd = Message('Updater', type=kSGD, **kwargs).proto
 
     assert lr_type != None, 'learning rate type should be specified'
 
-    setval(self.proto.learning_rate, base_lr=lr) 
+    setval(upd.learning_rate, base_lr=lr) 
     if lr_type == 'step':
-      cp = Step(change_freq=60, gamma=0.997)
-      setval(self.proto.learning_rate, type=kStep, step_conf=cp.proto) 
+      cp = Message('Step', change_freq=60, gamma=0.997)
+      setval(upd.learning_rate, type=kStep, step_conf=cp.proto) 
     elif lr_type == 'fixed':
-      cp = FixedStep(step=step, step_lr=step_lr)
-      setval(self.proto.learning_rate, type=kFixedStep, fixedstep_conf=cp.proto) 
+      cp = Message('FixedStep', step=step, step_lr=step_lr)
+      setval(upd.learning_rate, type=kFixedStep, fixedstep_conf=cp.proto) 
     elif lr_type == 'linear':
-      cp = Linear(change_freq=10, final_lr=0.1)
-      setval(self.proto.learning_rate, type=kLinear, linear_conf=cp.proto) 
+      cp = Message('Linear', change_freq=10, final_lr=0.1)
+      setval(upd.learning_rate, type=kLinear, linear_conf=cp.proto) 
+    self.proto = upd
 
 
 class Cluster(object):
@@ -165,14 +114,12 @@ class Cluster(object):
     assert workspace != None, 'need to set workspace'
     self.proto = ClusterProto()
     self.proto.workspace = workspace 
+    # default value
     self.proto.nworker_groups = 1
     self.proto.nserver_groups = 1
     self.proto.nworkers_per_group = 1
     self.proto.nservers_per_procs = 1
     setval(self.proto, **kwargs)
-
-
-
 
 class Param(object):
   def __init__(self, **kwargs):
@@ -193,8 +140,6 @@ class Param(object):
     setval(self.param, **kwargs) 
     return self
 
-
-
 class Layer(object):
   def __init__(self, **kwargs):
     self.layer = Message('Layer', **kwargs).proto
@@ -203,13 +148,6 @@ class Layer(object):
       setval(self.layer, name=generateName('layer', 1))
     # optional
     # srclayers are set in Model.build()
-    '''
-    if 'param' in kwargs:
-      setval(self.layer, param=kwargs['param'].param)
-      del kwargs['param']
-    setval(self.layer, **kwargs)
-    # srclayers are set in Model.build()
-    '''
 
 class Convolution(Layer):
   def __init__(self, num_filters, kernel, stride, pad, 
@@ -257,7 +195,6 @@ class Dense(Layer):
     super(Dense, self).__init__(type=kInnerProduct)
     self.layer.innerproduct_conf.num_output = output_dim   # required
     
-    #clee pg = ParamGen(type=getInitMethod(init))
     pg = Message('ParamGen', type=enumInitMethod(init))
     
     # param w  
@@ -279,8 +216,6 @@ class Dense(Layer):
     # following layers: e.g., activation, dropout, etc.
     if activation:
       self.mask = Activation(activation=activation).layer
-
-
 
 class Activation(Layer):
   def __init__(self, activation, topk=1):
@@ -333,72 +268,13 @@ class RGB(Layer):
     self.layer.rgbimage_conf.meanfile = meanfile
    
 
+#TODO run singa training/testing via a wrapper for Driver
+'''
 def SingaRun():
   conf = '../../examples/mnist/job.conf'
   cmd = '../../bin/singa-run.sh ' \
       + '-conf %s ' % conf 
   print 'cmd:' + cmd
   subprocess.Popen(cmd)
-  #cwd = os.path.join(os.path.dirname(__file__), '/home/chonho/incubator-singa')
-  #subprocess.Popen(cmd.strip().split(' '), cwd = cwd)
-
-'''
-m = Model('mlp')
-#alg = Algorithm(kBP)
-#m.evaluate(algorithm=alg, train_steps=1000)
-#m.evaluate(alg, train_steps=1000)
-#m.evaluate(Algorithm(kBP), train_steps=1000)
-m.evaluate(Algorithm(kCD, cd_k=1), train_steps=1000)
-m.display()
-'''
-# leemain    
-
-'''
-#SingaRun()
-
-m = Model('mlp')
-
-m.add(Data(load='record', batchsize=64, shape=784))
-#store = Store(batchsize=64, shape=784)
-#m.add(Data(load='record', conf=store))
-
-#m.add(Dense(32))
-#m.add(Activation('tanh'))
-##d = Dense(64, input_dim=20, init='uniform')
-##m.add(d)
-
-#m.add(Dense(16, init='uniform'))
-#m.add(Dense(16, init='uniform', 
-#            w_param=Param(low=-0.05, high=0.05),
-#            b_param=Param(low=-0.05, high=0.05)))
-
-#p = Param(name='w', shape=100)
-##l = Layer(param=p)
-#m.add(l)
-
-#m.add(Activation('softmax'))
-#m.add(Activation('softmax', 3))
-#m.add(Dense(2, activation='softmax'))
-#m.add(Dropout(0.5))
-
-sgd = SGD(lr=0.001, change='fixed')
-#sgd = SGD(lr=0.001, change='step', momentum=0.1, weight_decay = 0.2, delta=0.3)
-#m.compile(loss='mean_squared_error', optimizer=sgd)
-m.compile(updater=sgd)
-m.build()
-
-print
-m.display()
-'''
-
-'''
-model.add(Dense(64, input_dim=20, init='uniform'))
-model.add(Activation('tanh'))
-model.add(Dropout(0.5))
-model.add(Dense(64, init='uniform'))
-model.add(Activation('tanh'))
-model.add(Dropout(0.5))
-model.add(Dense(2, init='uniform'))
-model.add(Activation('softmax'))
 '''
 

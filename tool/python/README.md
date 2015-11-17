@@ -6,6 +6,8 @@
 * Convolution
 * Pooling
 * Norm
+* Dropout
+* RGB 
 
 ### Other classes
 
