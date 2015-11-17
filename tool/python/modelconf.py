@@ -1,27 +1,9 @@
 #!/usr/bin/env python
 import os, sys, re, subprocess
-from Utility import *
-from MessageClass import *
+from utils.utility import * 
+from utils.messageAPI import * 
 from job_pb2 import *
 from google.protobuf import text_format
-
-
-#TODO auto-generate it in MessageClass.py ???
-def enumInitMethod(key):
-  if key == 'uniform': return kUniform
-  if key == 'const': return kConstant
-  if key == 'gauss': return kGaussian
-  return ''
-
-def enumChangeMethod(key):
-  if key == 'fixed': return kFixed
-  if key == 'inverse': return kInverse
-  if key == 'exponential': return kExponential
-  if key == 'linear': return kLinear
-  if key == 'step': return kStep
-  if key == 'fixedstep': return kFixedStep
-  return ''
-#------------------
 
 class Model(object):
 
@@ -37,7 +19,6 @@ class Model(object):
   def compile(self, updater, cluster):
     setval(self.jobconf, updater=updater.proto)
     setval(self.jobconf, cluster=cluster.proto)
-    self.build()
 
   def build(self):
     net = NetProto() 
@@ -65,7 +46,8 @@ class Model(object):
 
     setval(self.jobconf, neuralnet=net)
 
-  def evaluate(self, algorithm, train_steps=1000, **kargs):
+  def fit(self, train_steps=1000, **kargs):
+    self.build()
     setval(self.jobconf, train_one_batch=algorithm.proto)
     setval(self.jobconf, train_steps=train_steps)
     setval(self.jobconf, **kargs)
@@ -73,6 +55,22 @@ class Model(object):
     
   def display(self):
     print text_format.MessageToString(self.jobconf)
+
+
+class Sequential(Model):
+  def __init__(self, name='my model', label=False):
+    super(Sequential, self).__init__(name=name, label=label)
+
+  # Train using BackPropagation
+  #fit(self, data, batch_size=128, nb_epoch=100, verbose=1, callbacks=[],
+  #    validation_split=0., validation_data=None, shuffle=True, class_weight={}, sample_weight={}):
+  def fit(self, data=None, train_steps=1000, **kargs):
+    assert data != None, 'Training data shold be set'
+    self.layers.insert(0, data)
+    self.build()
+    setval(self.jobconf, train_one_batch=Algorithm(kBP).proto)
+    setval(self.jobconf, train_steps=train_steps)
+    setval(self.jobconf, **kargs)
 
 
 
@@ -149,6 +147,18 @@ class Layer(object):
     # optional
     # srclayers are set in Model.build()
 
+class Data(Layer):
+  def __init__(self, load, train=True, conf=None, **kwargs):
+    assert load != None, 'data type should be specified'
+    self.layer_type = enumLayerType(load)
+    super(Data, self).__init__(name=generateName('data'), type=self.layer_type)
+    setval(self.layer, exclude=kTest if train else kTrain)
+
+    if conf == None:
+      setval(self.layer.store_conf, **kwargs)
+    else:
+      setval(self.layer, store_conf=conf.proto)
+
 class Convolution(Layer):
   def __init__(self, num_filters, kernel, stride, pad, 
                w_param=None, b_param=None, activation=None):
@@ -182,12 +192,15 @@ class Pooling(Layer):
     setval(self.layer.pooling_conf, kernel=kernel)
     setval(self.layer.pooling_conf, stride=stride)
 
-class Norm(Layer):
-  def __init__(self, size, **kwargs): 
-    super(Norm, self).__init__(name=generateName('norm'), type=kLRN)
+
+class LRN2D(Layer):
+  def __init__(self, size=0, alpha=1e-4, k=1, beta=0.75, **kwargs):
+    super(LRN2D, self).__init__(name=generateName('norm'), type=kLRN)
     # required
-    self.layer.lrn_conf.local_size = size
-    setval(self.layer.lrn_conf, **kwargs)
+    assert size != 0, 'local size should be set'
+    self.layer.lrn_conf.local_size = size 
+    setval(self.layer.lrn_conf, alpha=alpha, knorm=k, beta=beta, **kwargs)
+
 
 class Dense(Layer):
   def __init__(self, output_dim, activation=None, 
@@ -240,23 +253,6 @@ class Dropout(Layer):
     super(Dropout, self).__init__(name=generateName(self.name), type=self.layer_type)
     self.layer.dropout_conf.dropout_ratio = ratio
 
-class Data(Layer):
-  def __init__(self, load, train=True, conf=None, **kwargs):
-    self.name = 'data'
-    assert load != None, 'data type should be specified'
-    if load == 'record':
-      self.layer_type = kRecordInput
-    if load == 'csv':
-      self.layer_type = kCSVInput
-    if load == 'shard':
-      self.layer_type = kShardData
-    super(Data, self).__init__(name=generateName(self.name), type=self.layer_type)
-    setval(self.layer, exclude=kTest if train else kTrain)
-
-    if conf == None:
-      setval(self.layer.store_conf, **kwargs)
-    else:
-      setval(self.layer, store_conf=conf.proto)
 
 
 class RGB(Layer):

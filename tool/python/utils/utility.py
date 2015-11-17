@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-#import os, sys, re, subprocess
-#from job_pb2 import *
-#from google.protobuf import text_format
+from modelconf import *
 
 layerid = 0 
 paramid = 0 
