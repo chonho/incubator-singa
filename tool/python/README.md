@@ -5,7 +5,7 @@
 * Activation
 * Convolution
 * Pooling
-* Norm
+* LRN2D 
 * Dropout
 * RGB 
 
@@ -15,7 +15,6 @@
 * Param
 * SGD
 * Cluster
-* Algorithm
 
 ### Model class
 
@@ -30,7 +29,7 @@ Methods in Model class
 	* set Updater and Cluster
 	* build model, i.e., connect layers
 
-* evaluate
+* fit 
 	* set Algorithm (i.e., train_one_batch) and parameter values for training
 	* [IN PROGRESS] run singa via a wrapper for Driver class
 
