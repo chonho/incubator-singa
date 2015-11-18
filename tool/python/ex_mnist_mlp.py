@@ -27,6 +27,7 @@ m.fit(X_train, 1000, disp_freq=10)
 
 #TODO classify for test
 #result = m.evaluate(x_test, ...)
+#acc, loss = m.evaluate(x_test, ...)
 
 print
 m.display()

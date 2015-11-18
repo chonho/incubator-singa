@@ -2,8 +2,9 @@
 import os, sys, re, subprocess
 from utils.utility import * 
 from utils.messageAPI import * 
-from job_pb2 import *
 from google.protobuf import text_format
+sys.path.append(os.path.join(os.path.dirname(__file__), '../pb2'))
+from job_pb2 import *
 
 class Model(object):
 
@@ -68,7 +69,7 @@ class Sequential(Model):
     assert data != None, 'Training data shold be set'
     self.layers.insert(0, data)
     self.build()
-    setval(self.jobconf, train_one_batch=Algorithm(kBP).proto)
+    setval(self.jobconf, train_one_batch=Algorithm(type=kBP).proto)
     setval(self.jobconf, train_steps=train_steps)
     setval(self.jobconf, **kargs)
 
@@ -76,12 +77,13 @@ class Sequential(Model):
 
 class Store(object):
   def __init__(self, **kwargs):
-    self.proto = StoreProto()
+    self.proto = Message('Store').proto
     setval(self.proto, **kwargs)
 
 class Algorithm(object):
-  def __init__(self, type=kBP, **kwargs):
-    alg = Message('Alg', alg=type, **kwargs).proto
+  def __init__(self, **kwargs):
+  #def __init__(self, type=kBP, **kwargs):
+    alg = Message('Alg', alg=enumAlgType('bp'), **kwargs).proto
     if type == kCD:
       setval(alg.cd_conf, **kwargs)
     self.proto = alg

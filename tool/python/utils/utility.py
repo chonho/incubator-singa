@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from modelconf import *
 
 layerid = 0 
 paramid = 0 

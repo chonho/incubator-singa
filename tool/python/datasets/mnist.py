@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from modelconf import *
+from modelconf import * 
 
 def load_data(
          path = 'examples/mnist/train_data.bin',
