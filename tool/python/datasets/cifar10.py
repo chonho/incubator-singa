@@ -2,19 +2,21 @@
 from modelconf import *
 
 def load_data(
-         path = 'examples/cifar10/cifar10_train_shard',
+         path = 'examples/cifar10/train_data.bin',
+         path_mean = 'examples/cifar10/image_mean.bin',
          backend = 'kvfile',
-         random = 5000,
          batchsize = 64,
-         shape = 784,
+         random = 5000,
+         shape = (3, 32, 32),
          std = 127.5,
          mean = 127.5
       ):
 
-  store = Store(path=path,
-              random_skip=random, batchsize=batchsize) 
+  store = Store(path=path, mean_file=path_mean, backend=backend,
+              random_skip=random, batchsize=batchsize,
+              shape=shape) 
 
-  data = Data(load='sharddata', conf=store)
+  data = Data(load='recordinput', conf=store)
 
   return data
 

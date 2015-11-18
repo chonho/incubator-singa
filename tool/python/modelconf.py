@@ -44,6 +44,8 @@ class Model(object):
       ly.CopyFrom(label_layer.layer)
       getattr(ly, 'srclayers').append(self.layers[0].layer.name)
       getattr(lastly, 'srclayers').append(label_layer.layer.name)
+    else:
+      getattr(lastly, 'srclayers').append(self.layers[0].layer.name)
 
     setval(self.jobconf, neuralnet=net)
 
@@ -69,9 +71,14 @@ class Sequential(Model):
     assert data != None, 'Training data shold be set'
     self.layers.insert(0, data)
     self.build()
-    setval(self.jobconf, train_one_batch=Algorithm(type=kBP).proto)
+    setval(self.jobconf, train_one_batch=Algorithm(type=enumAlgType('bp')).proto)
     setval(self.jobconf, train_steps=train_steps)
     setval(self.jobconf, **kargs)
+
+    with open('job.conf', 'w') as f:
+      f.write(text_format.MessageToString(self.jobconf))
+
+    SingaRun()
 
 
 
@@ -81,10 +88,9 @@ class Store(object):
     setval(self.proto, **kwargs)
 
 class Algorithm(object):
-  def __init__(self, **kwargs):
-  #def __init__(self, type=kBP, **kwargs):
-    alg = Message('Alg', alg=enumAlgType('bp'), **kwargs).proto
-    if type == kCD:
+  def __init__(self, type=enumAlgType('bp'), **kwargs):
+    alg = Message('Alg', alg=type, **kwargs).proto
+    if type == enumAlgType('cd'):
       setval(alg.cd_conf, **kwargs)
     self.proto = alg
 
@@ -154,7 +160,10 @@ class Data(Layer):
     assert load != None, 'data type should be specified'
     self.layer_type = enumLayerType(load)
     super(Data, self).__init__(name=generateName('data'), type=self.layer_type)
-    setval(self.layer, exclude=kTest if train else kTrain)
+
+    # include/exclude
+    setval(self.layer, include=kTrain if train else kTest)
+    #setval(self.layer, exclude=kTest if train else kTrain)
 
     if conf == None:
       setval(self.layer.store_conf, **kwargs)
@@ -206,7 +215,7 @@ class LRN2D(Layer):
 
 class Dense(Layer):
   def __init__(self, output_dim, activation=None, 
-               init='uniform', w_param=None, b_param=None):
+               init='uniform', w_param=None, b_param=None, input_dim=None):
     super(Dense, self).__init__(type=kInnerProduct)
     self.layer.innerproduct_conf.num_output = output_dim   # required
     
@@ -217,7 +226,6 @@ class Dense(Layer):
       w_param = Param(name=generateName('w'), init=pg)
     else:
       setval(w_param.param, name=generateName('w'))
-      setval(w_param.param, init=pg.proto)
     setval(self.layer, param=w_param.param)
 
     # param b  
@@ -225,7 +233,6 @@ class Dense(Layer):
       b_param = Param(name=generateName('b'), init=pg)
     else:
       setval(b_param.param, name=generateName('b'))
-      setval(b_param.param, init=pg.proto)
     setval(self.layer, param=b_param.param)
 
     # following layers: e.g., activation, dropout, etc.
@@ -267,12 +274,18 @@ class RGB(Layer):
    
 
 #TODO run singa training/testing via a wrapper for Driver
-'''
 def SingaRun():
-  conf = '../../examples/mnist/job.conf'
+  SINGAROOT = '../../'
+  conf = 'job.conf'
   cmd = '../../bin/singa-run.sh ' \
-      + '-conf %s ' % conf 
-  print 'cmd:' + cmd
-  subprocess.Popen(cmd)
-'''
+      + '-conf %s ' % conf
+  print 'cmd: ' + cmd
 
+  procs = subprocess.Popen(cmd.strip().split(' '), stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
+
+  output = iter(procs.stdout.readline, '')
+  for line in output:
+    print line[:-1]
+    if 'accuracy' in line:
+      temp = line.split('accuracy')[1] 
+      acc = temp.split(' ')[2] # <--- format 

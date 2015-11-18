@@ -2,10 +2,6 @@
 from modelconf import *
 from datasets import mnist 
 
-#store = Store(path='examples/mnist/train_data.bin', backend='kvfile',
-#              random_skip=5000, batchsize=64, shape=784,
-#              std_value=127.5, mean_value=127.5)
-#X_train = Data(load='recordinput', conf=store)
 X_train = mnist.load_data()
 
 #m = Model('mlp')
@@ -25,10 +21,11 @@ topo = Cluster('examples/mnist')
 m.compile(updater=sgd, cluster=topo)
 m.fit(X_train, 1000, disp_freq=10)
 
-#TODO classify for test
+#TODO---- classify for test
 #result = m.evaluate(x_test, ...)
 #acc, loss = m.evaluate(x_test, ...)
+#-------
 
-print
-m.display()
+#print
+#m.display()
 

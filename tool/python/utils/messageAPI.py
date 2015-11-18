@@ -1,8 +1,8 @@
 #!/usr/bin/env python 
-import os, sys
-from utility import *
-sys.path.append(os.path.join(os.path.dirname(__file__),'../../pb2'))
-from job_pb2 import *
+import sys, os 
+from utility import * 
+sys.path.append(os.path.join(os.path.dirname(__file__),'../../pb2')) 
+from job_pb2 import * 
 
 class Message(object): 
   def __init__(self, protoname, **kwargs): 

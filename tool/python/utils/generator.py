@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os, sys, re
-from job_pb2 import *
 from google.protobuf import text_format
 
 COMPONENTS = ['neuralnet', 'train_one_batch', 'updater', 'cluster']
@@ -17,7 +16,9 @@ def generateMessageAPI():
   with open("messageAPI.py", "w") as f:
 
     out = '#!/usr/bin/env python \n'
-    out += 'from Utility import * \n\n'
+    out += 'import sys, os \n'
+    out += 'from utility import * \n\n'
+    out += 'sys.path.append(os.path.join(os.path.dirname(__file__),\'../../pb2\')) \n'
     out += 'from job_pb2 import * \n\n'
 
     out += 'class Message(object): \n' 
@@ -60,7 +61,7 @@ def readJobProto():
   temp = ''  
   enumKey = '' 
   enumFlag = False
-  with open("../../src/proto/job.proto", "r") as f:
+  with open("../../../src/proto/job.proto", "r") as f:
     for line in f:
       lnum += 1      
       words = re.split(r'\s*|\n*', line.strip())
