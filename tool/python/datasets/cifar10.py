@@ -2,7 +2,7 @@
 from modelconf import *
 
 def load_data(
-         path = 'examples/cifar10/train_data.bin',
+         path = 'examples/cifar10',
          path_mean = 'examples/cifar10/image_mean.bin',
          backend = 'kvfile',
          batchsize = 64,
@@ -12,11 +12,20 @@ def load_data(
          mean = 127.5
       ):
 
-  store = Store(path=path, mean_file=path_mean, backend=backend,
+  path_train = path + '/train_data.bin'
+  path_test  = path + '/test_data.bin'
+
+  store = Store(path=path_train, mean_file=path_mean, backend=backend,
               random_skip=random, batchsize=batchsize,
               shape=shape) 
 
-  data = Data(load='recordinput', conf=store)
+  data_train = Data(load='recordinput', phase='train', conf=store)
 
-  return data
+  store = Store(path=path_test, mean_file=path_mean, backend=backend,
+              batchsize=batchsize,
+              shape=shape) 
+
+  data_test = Data(load='recordinput', phase='test', conf=store)
+
+  return data_train, data_test
 

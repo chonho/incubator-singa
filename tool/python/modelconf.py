@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os, sys, re, subprocess
 from utils.utility import * 
-from utils.messageAPI import * 
+from utils.message import * 
 from google.protobuf import text_format
 sys.path.append(os.path.join(os.path.dirname(__file__), '../pb2'))
 from job_pb2 import *
@@ -28,9 +28,10 @@ class Model(object):
       ly = net.layer.add()
       ly.CopyFrom(self.layers[i].layer)
       lastly = ly
-      if i > 0:
-        getattr(ly, 'srclayers').append(slyname)
-        slyname = ly.name
+      if self.layers[i].is_datalayer == True:
+        continue
+      getattr(ly, 'srclayers').append(slyname)
+      slyname = ly.name
       if hasattr(self.layers[i], 'mask'):
         mly = net.layer.add()
         mly.CopyFrom(self.layers[i].mask)
@@ -49,12 +50,11 @@ class Model(object):
 
     setval(self.jobconf, neuralnet=net)
 
-  def fit(self, train_steps=1000, **kargs):
-    self.build()
-    setval(self.jobconf, train_one_batch=algorithm.proto)
-    setval(self.jobconf, train_steps=train_steps)
-    setval(self.jobconf, **kargs)
+  def fit(self, **kwargs):
+    pass
 
+  def evaluate(self, **kwargs):
+    pass
     
   def display(self):
     print text_format.MessageToString(self.jobconf)
@@ -64,26 +64,83 @@ class Sequential(Model):
   def __init__(self, name='my model', label=False):
     super(Sequential, self).__init__(name=name, label=label)
 
-  # Train using BackPropagation
-  #fit(self, data, batch_size=128, nb_epoch=100, verbose=1, callbacks=[],
-  #    validation_split=0., validation_data=None, shuffle=True, class_weight={}, sample_weight={}):
-  def fit(self, data=None, train_steps=1000, **kargs):
+  def exist_datalayer(self, phase):
+    if self.layers[0].layer.include != enumPhase(phase): # train
+      if self.layers[1].layer.include != enumPhase(phase): # test
+        if self.layers[2].layer.include != enumPhase(phase): # valid
+          return False
+    return True
+    
+  def fit(self, data=None, train_steps=0, **kwargs):
+    '''
+    **kwargs (KEY=VALUE)
+        KEY                VALUE
+        batch_size       : (int) batch size for training data
+        disp_freq        : (int) frequency to display training info
+        disp_after       : (int) display after this number 
+        validate_data    : (Data) validation data, specified in load_data()
+        validate_freq    : (int) frequency of validation
+        validate_steps   : (int) total number of steps for validation
+        validate_after   : (int) start validation after this number
+        checkpoint_path  : (string) path to checkpoint file
+        checkpoint_freq  : (int) frequency for checkpoint
+        checkpoint_after : (int) start checkpointing after this number
+    '''
     assert data != None, 'Training data shold be set'
-    self.layers.insert(0, data)
-    self.build()
-    setval(self.jobconf, train_one_batch=Algorithm(type=enumAlgType('bp')).proto)
+    assert train_steps != 0, 'Training steps shold be set'
+
+    if 'batch_size' in kwargs:  # if new value is set, replace the batch_size
+      setval(data.layer.store_conf, batchsize=kwargs['batch_size'])
+   
+    if self.exist_datalayer('train') == False: 
+      self.layers.insert(0, data)
+
+    if 'validate_data' in kwargs:
+      self.layers.insert(1, kwargs['validate_data'])
+
     setval(self.jobconf, train_steps=train_steps)
-    setval(self.jobconf, **kargs)
+    setval(self.jobconf, **kwargs)
+    
+    # set Train_one_batch component, using backprogapation
+    setval(self.jobconf, train_one_batch=Algorithm(type=enumAlgType('bp')).proto)
+
+  def evaluate(self, data=None, test_steps=10, **kwargs):
+    '''
+    **kwargs (KEY=VALUE)
+        KEY            VALUE
+        batch_size   : (int) batch size for testing data
+        test_freq    : (int) frequency of testing
+        test_steps   : (int) total number of steps for testing 
+        test_after   : (int) start testing after this number of steps 
+    '''
+    assert data != None, 'Testing data shold be set'
+
+    if 'batch_size' in kwargs:  # if new value is set, replace the batch_size
+      setval(data.layer.store_conf, batchsize=kwargs['batch_size'])
+
+    if self.exist_datalayer('test') == False: 
+      self.layers.insert(1, data)
+    
+    setval(self.jobconf, test_steps=test_steps)
+    setval(self.jobconf, **kwargs)
+
+    self.build()  # construct Nneuralnet Component
 
     with open('job.conf', 'w') as f:
       f.write(text_format.MessageToString(self.jobconf))
 
     SingaRun()
 
-
-
 class Store(object):
   def __init__(self, **kwargs):
+    '''
+    **kwargs
+        path        : (string) path to dataset
+        backend     : (string) 
+        batch_size  : (int) batch size of dataset
+        shape
+
+    '''
     self.proto = Message('Store').proto
     setval(self.proto, **kwargs)
 
@@ -152,23 +209,25 @@ class Layer(object):
     # required
     if not 'name' in kwargs:
       setval(self.layer, name=generateName('layer', 1))
-    # optional
+
     # srclayers are set in Model.build()
+    self.is_datalayer = False 
 
 class Data(Layer):
-  def __init__(self, load, train=True, conf=None, **kwargs):
+  def __init__(self, load, phase='train', conf=None, **kwargs):
     assert load != None, 'data type should be specified'
     self.layer_type = enumLayerType(load)
     super(Data, self).__init__(name=generateName('data'), type=self.layer_type)
 
     # include/exclude
-    setval(self.layer, include=kTrain if train else kTest)
-    #setval(self.layer, exclude=kTest if train else kTrain)
+    setval(self.layer, include=enumPhase(phase))
+    #setval(self.layer, exclude=kTest if phase=='train' else kTrain)
 
     if conf == None:
       setval(self.layer.store_conf, **kwargs)
     else:
       setval(self.layer, store_conf=conf.proto)
+    self.is_datalayer = True
 
 class Convolution(Layer):
   def __init__(self, num_filters, kernel, stride, pad, 

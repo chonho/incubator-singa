@@ -2,7 +2,7 @@
 from modelconf import * 
 
 def load_data(
-         path = 'examples/mnist/train_data.bin',
+         path = 'examples/mnist',
          backend = 'kvfile',
          random = 5000,
          batchsize = 64,
@@ -11,11 +11,19 @@ def load_data(
          mean = 127.5
       ):
 
-  store = Store(path=path, backend=backend,
-                random_skip=random, batchsize=batchsize, shape=shape,
+  path_train = path + '/train_data.bin'
+  path_test  = path + '/test_data.bin'
+
+  store = Store(path=path_train, backend=backend,
+                random_skip=random,
+                batchsize=batchsize, shape=shape,
                 std_value=std, mean_value=mean)
+  data_train = Data(load='recordinput', phase='train', conf=store)
 
-  data = Data(load='recordinput', conf=store)
+  store = Store(path=path_test, backend=backend,
+                batchsize=batchsize, shape=shape,
+                std_value=std, mean_value=mean)
+  data_test = Data(load='recordinput', phase='test', conf=store)
 
-  return data
+  return data_train, data_test
 

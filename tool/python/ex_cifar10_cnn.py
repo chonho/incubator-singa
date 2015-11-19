@@ -2,7 +2,7 @@
 from modelconf import *
 from datasets import cifar10
 
-X_train = cifar10.load_data()
+X_train, X_test = cifar10.load_data()
 
 m = Sequential('cnn', label=False)
 
@@ -30,11 +30,7 @@ sgd = SGD(weight_decay=0.004, lr_type='fixed', step=(0,60000,65000), step_lr=(0.
 topo = Cluster('examples/cifar10')
 m.compile(updater=sgd, cluster=topo)
 m.fit(X_train, train_steps=1000, disp_freq=30)
-
-#TODO----- classify test data
-#result = m.evaluate(x_test, ...)
-#---------
-
+m.evaluate(X_test, test_steps=10, test_freq=300)
 
 print
 m.display()
