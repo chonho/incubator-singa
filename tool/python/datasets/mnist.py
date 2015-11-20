@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-from modelconf import * 
+from model import * 
 
 def load_data(
-         path = 'examples/mnist',
+         workspace = 'examples/mnist',
          backend = 'kvfile',
          random = 5000,
          batchsize = 64,
@@ -11,8 +11,8 @@ def load_data(
          mean = 127.5
       ):
 
-  path_train = path + '/train_data.bin'
-  path_test  = path + '/test_data.bin'
+  path_train = workspace + '/train_data.bin'
+  path_test  = workspace + '/test_data.bin'
 
   store = Store(path=path_train, backend=backend,
                 random_skip=random,
@@ -25,5 +25,5 @@ def load_data(
                 std_value=std, mean_value=mean)
   data_test = Data(load='recordinput', phase='test', conf=store)
 
-  return data_train, data_test
+  return data_train, data_test, workspace
 
