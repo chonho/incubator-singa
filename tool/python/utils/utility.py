@@ -25,6 +25,7 @@ def setval(proto, **kwargs):
     if hasattr(proto, k):
       flabel = proto.DESCRIPTOR.fields_by_name[k].label
       ftype  = proto.DESCRIPTOR.fields_by_name[k].type
+
       fattr  = getattr(proto, k) 
       if flabel == 3: # repeated field
         if ftype == 11: # message type 
@@ -42,4 +43,3 @@ def setval(proto, **kwargs):
           fattr.MergeFrom(v)
         else:
           setattr(proto, k, v)
-

@@ -6,7 +6,7 @@ X_train, X_test, workspace = mnist.load_data()
 
 m = Sequential('mlp')
 
-par = Param(init='uniform', low=-0.05, high=0.05)
+par = Parameter(init='uniform', range=0.05)
 m.add(Dense(2500, w_param=par, b_param=par, activation='tanh')) 
 m.add(Dense(2000, w_param=par, b_param=par, activation='tanh')) 
 m.add(Dense(1500, w_param=par, b_param=par, activation='tanh')) 

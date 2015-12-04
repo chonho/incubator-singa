@@ -3,8 +3,9 @@ import os, sys, re, subprocess
 from utils.utility import * 
 from utils.message import * 
 from google.protobuf import text_format
-sys.path.append(os.path.join(os.path.dirname(__file__), '../pb2'))
-from job_pb2 import *
+#sys.path.append(os.path.join(os.path.dirname(__file__), '../pb2'))
+#from job_pb2 import *
+#from rnnlm_pb2 import *
 
 class Model(object):
 
@@ -16,7 +17,7 @@ class Model(object):
   def add(self, layer):
     self.layers.append(layer)
 
-  def compile(self, optimizer=None, cluster=None, loss='categorical_crossentropy', topk=1):
+  def compile(self, optimizer=None, cluster=None, loss='categorical_crossentropy', topk=1, **kwargs):
     '''
     required
       optimizer = (Updater) // updater settings, e.g., SGD
@@ -50,7 +51,8 @@ class Model(object):
         self.add(Activation('softmaxloss', topk=topk))
       elif loss == 'mean_squared_error':
         self.add(Activation('euclideanloss'))
-
+      elif loss == 'user_loss_rnnlm': # user-defined loss layer for rnnlm
+        self.add(UserLossRNNLM(nclass=kwargs['nclass'], vocab_size=kwargs['in_dim']))
 
   def build(self):
     net = NetProto() 
@@ -138,7 +140,7 @@ class Sequential(Model):
     # set Train_one_batch component, using backprogapation
     setval(self.jobconf, train_one_batch=Algorithm(type=enumAlgType('bp')).proto)
 
-  def evaluate(self, data=None, test_steps=10, **fields):
+  def evaluate(self, data=None, execpath='', **fields):
     '''
     required
       data       = (Data)  // Data class object for testing data
@@ -158,7 +160,6 @@ class Sequential(Model):
     if self.exist_datalayer('test') == False: 
       self.layers.insert(1, data)
     
-    setval(self.jobconf, test_steps=test_steps)
     setval(self.jobconf, **fields)
 
     self.build()  # construct Nneuralnet Component
@@ -167,7 +168,7 @@ class Sequential(Model):
       f.write(text_format.MessageToString(self.jobconf))
 
     #self.display()
-    self.result = SingaRun()
+    self.result = SingaRun(execpath=execpath)
     return self.result
 
 class Store(object):
@@ -257,24 +258,53 @@ class Cluster(object):
     setval(self.proto, **fields)
 
 #TODO make this internally used
-class Param(object):
+class Parameter(object):
+
   def __init__(self, **kwargs):
-    self.param = ParamProto()
+    '''
+    optional
+      **kwargs
+        name  = (string) // parameter name
+        lr    = (float)  // learning rate
+        wd    = (float)  // weight decay
+        init  = (string) // initialized type {'constant','uniform','gaussian'} 
+        value = (int)    // value for 'constant'
+        range = (float)  // [low, high] for 'uniform', low=-range, high=range
+        low   = (float)  // low value   for 'uniform'
+        high  = (float)  // high value  for 'uniform' 
+        mean  = (float)  // mean for 'gaussian'
+        std   = (float)  // std  for 'gaussian'
+    '''
+    fields = {'lr_scale' : kwargs['lr'] if 'lr' in kwargs else 1,
+              'wd_scale' : kwargs['wd'] if 'wd' in kwargs else 1
+             }
+    self.param = Message('Param', **fields).proto
+
     if not 'name' in kwargs:
       setval(self.param, name=generateName('param', 1))
-    if 'init' in kwargs:
-      pg = Message('ParamGen', type=enumInitMethod(kwargs['init']))
-      setval(self.param, init=pg.proto)
-      del kwargs['init']
-    if 'param_init' in kwargs:
-      setval(self.param, init=kwargs['param_init'].proto)
-      del kwargs['param_init']
-    setval(self.param, **kwargs) 
-    setval(self.param.init, **kwargs) 
+    else:
+      setval(self.param, name=kwargs['name'])
 
-  def setval(self, **kwargs):
-    setval(self.param, **kwargs) 
-    return self
+    if 'range' in kwargs:
+      kwargs['low'] = -float(kwargs['range'])
+      kwargs['high'] = float(kwargs['range'])
+
+    if 'init' in kwargs:
+      pg = Message('ParamGen', type=enumInitMethod(kwargs['init']), **kwargs)
+      del kwargs['init']
+    else: # default: uniform
+      pg = Message('ParamGen', type=enumInitMethod(kwargs['uniform']))
+    setval(self.param, init=pg.proto)
+      
+
+    #if 'param_init' in kwargs:
+    #  setval(self.param, init=kwargs['param_init'].proto)
+    #  del kwargs['param_init']
+
+  def update(self, **fields):
+    setval(self.param, **fields) 
+    setval(self.param.init, **fields) 
+
 
 class Layer(object):
   def __init__(self, **kwargs):
@@ -286,25 +316,44 @@ class Layer(object):
     # srclayers are set in Model.build()
     self.is_datalayer = False 
 
+  def setParamField(self, param, pname, **kwargs):
+    # param: ParamProto
+    if pname == 'w':
+      field = {'lr_scale' : kwargs['w_lr'] if 'w_lr' in kwargs else param.lr_scale,
+               'wd_scale' : kwargs['w_wd'] if 'w_wd' in kwargs else param.wd_scale
+              }
+    elif pname == 'b':
+      field = {'lr_scale' : kwargs['b_lr'] if 'b_lr' in kwargs else param.lr_scale,
+               'wd_scale' : kwargs['b_wd'] if 'b_wd' in kwargs else param.wd_scale
+              }
+    setval(param, name=generateName(pname), **field)
+
 class Data(Layer):
   def __init__(self, load, phase='train', conf=None, **kwargs):
     assert load != None, 'data type should be specified'
-    self.layer_type = enumLayerType(load)
-    super(Data, self).__init__(name=generateName('data'), type=self.layer_type)
+    if load == 'kData':
+      super(Data, self).__init__(name=generateName('data'), user_type=load)
+    else:
+      self.layer_type = enumLayerType(load)
+      super(Data, self).__init__(name=generateName('data'), type=self.layer_type)
 
     # include/exclude
     setval(self.layer, include=enumPhase(phase))
     #setval(self.layer, exclude=kTest if phase=='train' else kTrain)
 
     if conf == None:
-      setval(self.layer.store_conf, **kwargs)
+      if load == 'kData':
+        setval(self.layer.Extensions[data_conf], **kwargs)
+      else:
+        setval(self.layer.store_conf, **kwargs)
     else:
       setval(self.layer, store_conf=conf.proto)
     self.is_datalayer = True
 
 class Convolution2D(Layer):
   def __init__(self, nb_filter=0, kernel=0, stride=1, pad=0,
-               w_param=None, b_param=None, activation=None, **kwargs):
+               init='uniform', w_param=None, b_param=None,
+               activation=None, **kwargs):
     '''
     required
       nb_filter = (int)  // the number of filters
@@ -312,6 +361,8 @@ class Convolution2D(Layer):
     optional
       stride    = (int)  // the size of stride
       pad       = (int)  // the size of padding
+      xxxxx 
+
     '''
     assert nb_filter > 0 and kernel > 0, 'should be set as positive int'
     super(Convolution2D, self).__init__(name=generateName('conv',1), type=kCConvolution)
@@ -321,14 +372,25 @@ class Convolution2D(Layer):
               'pad' : pad}
     setval(self.layer.convolution_conf, **fields)
 
-    # param w  
-    assert w_param != None, 'weight param should be specified'
-    setval(w_param.param, name=generateName('w'))
+    # parameter w  
+    if w_param == None:
+      w_param = Parameter(name=generateName('w'), init=init) # default: uniform
+    else:
+      field = {'lr_scale' : kwargs['w_lr'] if 'w_lr' in kwargs else w_param.param.lr_scale,
+               'wd_scale' : kwargs['w_wd'] if 'w_wd' in kwargs else w_param.param.wd_scale
+              }
+      setval(w_param.param, name=generateName('w'), **field)
+    setval(w_param.param.init, **kwargs)
     setval(self.layer, param=w_param.param)
 
-    # param b  
-    assert b_param != None, 'bias param should be specified'
-    setval(b_param.param, name=generateName('b'))
+    # parameter b  
+    if b_param == None:
+      b_param = Parameter(name=generateName('b'), init=init) # default: uniform
+    else:
+      field = {'lr_scale' : kwargs['b_lr'] if 'b_lr' in kwargs else b_param.param.lr_scale,
+               'wd_scale' : kwargs['b_wd'] if 'b_wd' in kwargs else b_param.param.wd_scale
+              }
+      setval(b_param.param, name=generateName('b'), **field)
     setval(self.layer, param=b_param.param)
 
     # following layers: e.g., activation, dropout, etc.
@@ -388,7 +450,6 @@ class LRN2D(Layer):
     self.layer.lrn_conf.local_size = size 
     setval(self.layer.lrn_conf, alpha=alpha, knorm=k, beta=beta, **kwargs)
 
-
 class Dense(Layer):
   def __init__(self, output_dim=0, activation=None, 
                init='uniform', w_param=None, b_param=None, input_dim=None,
@@ -398,26 +459,27 @@ class Dense(Layer):
       output_dim = (int)
     optional
       activation = (string)
+      **kwargs
+        w_lr
+        w_wd
 
     '''
     assert output_dim > 0, 'output_dim should be set'
     super(Dense, self).__init__(type=kInnerProduct, **kwargs)
     self.layer.innerproduct_conf.num_output = output_dim   # required
     
-    pg = Message('ParamGen', type=enumInitMethod(init))
-    
-    # param w  
+    # parameter w  
     if w_param == None:
-      w_param = Param(name=generateName('w'), init=pg)
+      w_param = Parameter(name=generateName('w'), init=init) # default: uniform
     else:
-      setval(w_param.param, name=generateName('w'))
+      self.setParamField(w_param.param, 'w', **kwargs)
     setval(self.layer, param=w_param.param)
 
-    # param b  
+    # parameter b  
     if b_param == None:
-      b_param = Param(name=generateName('b'), init=pg)
+      b_param = Parameter(name=generateName('b'), init=init) # default: uniform
     else:
-      setval(b_param.param, name=generateName('b'))
+      self.setParamField(b_param.param, 'b', **kwargs)
     setval(self.layer, param=b_param.param)
 
     # following layers: e.g., activation, dropout, etc.
@@ -449,14 +511,48 @@ class RGB(Layer):
     self.layer_type = kRGBImage
     super(RGB, self).__init__(name=generateName(self.name), type=self.layer_type)
     self.layer.rgbimage_conf.meanfile = meanfile
-   
+  
+class Embedding(Layer):
+  def __init__(self, in_dim, out_dim, w_param=None, **kwargs):
+    super(Embedding, self).__init__(name=generateName('embedding',1), user_type='kEmbedding')
+    fields = { 'vocab_size': in_dim,
+               'word_dim': out_dim }
+    setval(self.layer.Extensions[embedding_conf], **fields)
+    if w_param == None:
+      w_param = Parameter(name=generateName('w'), init=init) # default: uniform
+    else:
+      self.setParamField(w_param.param, 'w', **kwargs)
+    setval(self.layer, param=w_param.param)
+    
+class RNNLM(Layer):
+  def __init__(self, dim, w_param=None, **kwargs):
+    super(RNNLM, self).__init__(name=generateName('hidden',1), user_type='kHidden')
+    if w_param == None:
+      w_param = Parameter(name=generateName('w'), init=init) # default: uniform
+    else:
+      self.setParamField(w_param.param, 'w', **kwargs)
+    setval(self.layer, param=w_param.param)
+
+class UserLossRNNLM(Layer):
+  def __init__(self, **kwargs):
+    super(UserLossRNNLM, self).__init__(name=generateName('loss',1), user_type='kLoss')
+    self.layer.Extensions[loss_conf].nclass = kwargs['nclass'] 
+    self.layer.Extensions[loss_conf].vocab_size = kwargs['vocab_size'] 
+    setval(self.layer, param=Parameter(name=generateName('w'), init='uniform', range=0.3).param)
+    setval(self.layer, param=Parameter(name=generateName('w',1), init='uniform', range=0.3).param)
+ 
 
 #TODO run singa training/testing via a wrapper for Driver
-def SingaRun():
+def SingaRun(execpath=''):
   SINGAROOT = '../../'
   conf = 'job.conf'
-  cmd = '../../bin/singa-run.sh ' \
-      + '-conf %s ' % conf
+  if execpath=='':
+    cmd = '../../bin/singa-run.sh ' \
+        + '-conf %s ' % conf 
+  else:
+    cmd = '../../bin/singa-run.sh ' \
+        + '-conf %s ' % conf \
+        + '-exec %s ' % execpath 
 
   procs = subprocess.Popen(cmd.strip().split(' '), stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
 
@@ -472,6 +568,12 @@ def SingaRun():
       #print 'Step: ', line[idx_step+1], 'Acc: ', acc, 'Loss: ', loss 
       resultDic.setdefault(step,{})['acc'] = acc 
       resultDic.setdefault(step,{})['loss'] = loss 
+    elif 'Train' in line:
+      step = line[line.index('step')+1]
+      loss = line[line.index('loss')+1]
+      ppl  = line[line.index('ppl')+1]
+      resultDic.setdefault(step,{})['loss'] = loss 
+      resultDic.setdefault(step,{})['ppl'] = ppl 
 
   #TODO better format to store??
   return resultDic

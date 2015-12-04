@@ -25,7 +25,7 @@
 ### Other classes
 
 * Store
-* Param
+* Parameter
 * SGD
 * Cluster
 
@@ -65,7 +65,7 @@ X_train, X_test, workspace = mnist.load_data()
 
 m = Sequential('mlp')  # inherited from Model 
 
-par = Param(init='uniform', low=-0.05, high=0.05)
+par = Parameter(init='uniform', low=-0.05, high=0.05)
 m.add(Dense(2500, w_param=par, b_param=par))
 m.add(Activation('tanh'))
 m.add(Dense(2000, w_param=par, b_param=par, activation='tanh'))
@@ -91,9 +91,9 @@ X_train, X_test, workspace = cifar10.load_data()
 
 m = Sequential('cnn')
 
-parw = Param(init='gauss', std=0.0001)
-parb = Param(lr_scale=2, init='const', value=0)
-m.add(Convolution(32, 5, 1, 2, w_param=parw, b_param=parb))
+parw = Parameter(init='gauss', std=0.0001)
+parb = Parameter(init='const', value=0)
+m.add(Convolution(32, 5, 1, 2, w_param=parw, b_param=parb, b_lr=2))
 m.add(MaxPooling2D(pool_size(3,3), stride=2))
 m.add(Activation('relu'))
 m.add(LRN2D(3, alpha=0.00005, beta=0.75))
@@ -157,4 +157,35 @@ m.add(Data(load='recordinput', phase='train', conf=store)) // Data layer is adde
 store = Store(path='test.bin', batch_size=100, ...)        // parameter values are set explicitly 
 m.add(Data(load='recordinput', phase='test', conf=store))  // Data layer is added
 ```
+
+### Parameter class
+
+Users need to set parameter configuration and initial values. For example,
+
+* Parameter configuration
+	* lr = (float) // learning rate
+	* wd = (float) // weight decay
+
+* Parameter initialization
+	* init = (string) // one of the types, 'uniform', 'constant', 'gaussian' 
+	* for uniform [default]
+		* high = (float)
+		* low = (float)
+	* for constant
+		* value = (float)
+	* for gaussian
+		* mean = (float)
+		* std = (float)
+
+Several ways to set Parameter values
+```
+parw = Parameter(lr=2, wd=10, init='constant', value=0)
+m.add(Dense(10, w_param=parw, ...)
+```
+```
+parw = Parameter(init='constant', value=0)
+m.add(Dense(10, w_param=parw, w_lr=2, w_wd=10, ...)
+```
+
+
 
