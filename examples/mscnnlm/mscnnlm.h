@@ -161,6 +161,20 @@ class PoolingOverTime : public MSCNNLayer {
   //PoolingOverTimeProto_PoolMethod pool_;
 };
 
+class OneDimConvLayer: public MSCNNLayer {
+ public:
+  ~OneDimConvLayer();
+  void Setup(const LayerProto& conf, const vector<Layer*>& srclayers) override;
+  void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
+  void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
+ private:
+  int kernel_, pad_, stride_;
+  int batchsize_, vdim_;
+  int conv_width_, weight_width_;
+  int num_filters_;
+  Param *weight_, *bias_;
+};
+
 /**
  * hid[t] = sigmoid(hid[t-1] * W + src[t])
  */

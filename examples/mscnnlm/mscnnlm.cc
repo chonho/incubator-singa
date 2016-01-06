@@ -133,6 +133,7 @@ void EmbeddingLayer::Setup(const LayerProto& conf,
   int max_window = srclayers[0]->data(this).shape()[0];
   // word_dim_ is the embedded feature length
   word_dim_ = conf.GetExtension(embedding_conf).word_dim();
+  // the data should be shaped as a 3D matrix
   data_.Reshape(vector<int>{max_window, word_dim_});
   grad_.ReshapeLike(data_);
   vocab_size_ = conf.GetExtension(embedding_conf).vocab_size();
@@ -392,6 +393,42 @@ void PoolingOverTime::ComputeGradient(int flag,
   int i;
   for (i = 0; i < vdim_; i++)
     gsrc[index_[i]][i] = grad[i];
+}
+
+OneDimConvLayer::~OneDimConvLayer()
+{
+  delete[] weight;
+  delete[] bias;
+}
+
+void OneDimConvLayer::Setup(const LayerProto& conf,
+    const vector<Layer*>& srclayers) {
+  CHECK_EQ(srclayers.size(), 2);
+  Layer::Setup(conf, srclayers);
+
+  OneDimConvProto conv_conf = conf.Conv_conf();
+  kernel_ = conv_conf.kernel();
+  CHECK_NE(kernel_, 0);
+  pad_ = conv_conf.pad();
+  stride_ = conv_conf.stride();
+  num_filters_ = conv_conf.num_filters();
+
+  if (partition_dim() > 0)
+    num_filters_ /= srclayers.at(0)->num_partitions();
+  const vector<int>& srcshape = srclayers[0]->data(this).shape();
+  batchsize_ = srcshape[0];     //how many words do we have? not this number
+  int dim = srcshape.size();
+  CHECK_GT(dim, 1);
+  vdim_ = srcshape[0] + 1;          // the length of pooling vector for each words.
+  conv_width_ = (vdim_ + 2 * pad_ - kernel_) / stride_ + 1;
+  weight_width_ = kernel_ * vdim_;
+  vector<int> shape{batchsize_, num_filters_, conv_width_};
+  data.Reshape(shape);
+  grad.ReshapeLike(data);
+  weight_ = Param::Create(conf.param(0));
+  weight_->Setup(vector<int>{num_filters_, weight_width_});
+  bias_ = Param::Create(conf.param(1));
+  bias_->Setup(vector<int>{num_filters});
 }
 /***********HiddenLayer**********/
 HiddenLayer::~HiddenLayer() {

@@ -45,7 +45,7 @@ message MSInnerProductProto {
   optional bool transpose = 31 [default = false];
 }
 
-message OneDimConvolutionProto {
+message OneDimConvProto {
   optional int32 num_filters = 1;
   optional int32 kernel = 2 [default = 3];
   optional int32 pad = 30 [default = 0];
@@ -57,7 +57,7 @@ extend singa.LayerProto {
   optional LossProto loss_conf = 102;
   optional DataProto data_conf = 103;
   optional MSInnerProductProto msip_conf = 104;
-  optional OneDimConvolutionProto conv_conf = 105;
+  optional OneDimConvProto conv_conf = 105;
 }
 
 // CASE1
