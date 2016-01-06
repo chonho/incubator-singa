@@ -20,7 +20,7 @@
 ```
 bin/singa-run.sh -exec user_main.py
 ```
-The python code, e.g., user_main.py, would create the JobProto object and pass it to Driver::Train.
+The python code, e.g., `user_main.py`, would create the JobProto object and pass it to Driver::Train.
 
 For example,
 ```
@@ -32,9 +32,9 @@ Note that, in order to use the Python Helper feature, users need to add the foll
 ```
 ./configure --enable-python --with-python=PYTHON_DIR
 ```
-where PYTHON_DIR has Python.h
+where PYTHON_DIR has `Python.h`
 
-### Layer class (inherited)
+### Layer class
 
 * Data
 * Dense
@@ -81,7 +81,7 @@ fit() and evaluate() return train/test results, a dictionary containing
 	* 'acc' for accuracy
 	* 'loss' for loss
 	* 'ppl' for ppl
-	* 'se' for squred error   
+	* 'se' for squared error   
 
 #### To run Singa on GPU
 
@@ -104,6 +104,7 @@ Users need to set parameter and initial values. For example,
 
 * Parameter initialization (fields in ParamGen proto)
 	* init = (string) // one of the types, 'uniform', 'constant', 'gaussian'
+	* scale = (float) // for 'uniform'. It is converted to low=-scale, and high=scale
 	* high = (float)  // for 'uniform'
 	* low = (float)   // for 'uniform'
 	* value = (float) // for 'constant'
@@ -115,8 +116,8 @@ Users need to set parameter and initial values. For example,
 * Bias (`b_param`) is 'constant' with value=0 at default
 
 * How to update the parameter fields
-	* for updating Weight, put `w_` in front of field name
-	* for updating Bias, put `b_` in front of field name
+	* Put `w_` in front of the field name for weight
+	* Put `b_` in front of the field name for bias
 
 Several ways to set Parameter values
 ```
@@ -319,6 +320,7 @@ result = m.evaluate(X_test, batch_size=100, test_steps=100)
 ```
 
 (4) Run singa for test only
+
 Assume a checkpoint exists after training
 ```
 result = m.evaluate(X_test, batch_size=100, checkpoint_path=workspace+'/checkpoint/step100-worker0')
