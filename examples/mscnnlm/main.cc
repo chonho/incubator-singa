@@ -38,14 +38,16 @@ int main(int argc, char **argv) {
 
   // register all layers for mscnnlm
   driver.RegisterLayer<mscnnlm::EmbeddingLayer, std::string>("kEmbedding");
-  driver.RegisterLayer<mscnnlm::HiddenLayer, std::string>("kHidden");
+  //driver.RegisterLayer<mscnnlm::HiddenLayer, std::string>("kHidden");
   driver.RegisterLayer<mscnnlm::LossLayer, std::string>("kLoss");
   driver.RegisterLayer<mscnnlm::DataLayer, std::string>("kData");
-  driver.RegisterLayer<mscnnlm::MSInnerProductLayer, std::string>("kMSIP");
+  driver.RegisterLayer<mscnnlm::ConcatLayer, std::string>("kConcat");
   driver.RegisterLayer<mscnnlm::PoolingOverTime, std::string>("kPoolingOverTime");
+  driver.RegisterLayer<mscnnlm::WordPoolingLayer, std::string>("kWordPooling");
 
   singa::JobProto jobConf = driver.job_conf();
 
+  LOG(ERROR) <<"check";
   driver.Train(resume, jobConf);
   return 0;
 }

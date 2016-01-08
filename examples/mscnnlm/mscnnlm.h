@@ -73,6 +73,8 @@ class DataLayer : public MSCNNLayer, public singa::InputLayer {
  private:
   int num_feature_;
   int max_window_;
+  int max_word_len_;
+  int max_num_word_;
   singa::io::Store* store_ = nullptr;
 };
 
@@ -112,40 +114,23 @@ class EmbeddingLayer : public MSCNNLayer {
   Param* embed_;
 };
 
-/**
- * Convolution layer that get one word from the lower layer(data/embedding layer)
- * for each word based on its index
- */
-class MSInnerProductLayer : public MSCNNLayer {
+class ConcatLayer : public MSCNNLayer {
  public:
-  ~MSInnerProductLayer();
+  ~ConcatLayer();
   void Setup(const LayerProto& conf, const vector<Layer*>& srclayers) override;
   void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
   void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
-  void InitCombination();
-  int Combination(int n, int k);
-  void Copy(float* dst, float* src, int* s, int k, int vdim);
-  void KSubset(int n, int* s, int sindxe, int index, int k,
-    float* dst, float* src, int vdim);
-  Tensor<cpu, 2> Concatenation(const vector<Layer*>& srclayers);
-
+  int Binomial(int n, int k);
+  void Combinations(int n, int k);
+  void SetIndex(const vector<Layer*>& srclayers);
  private:
-  int batchsize_;
-  // total number of unique characters(events), set manually now.
-  int vacab_size_;
-  // number of concatenate vector
+  int max_word_len_;
+  int max_num_word_;
+  int word_dim_;
   int kernel_;
-  // hdim_: length of result vector
-  int vdim_, hdim_;
-  // combination number
-  int rows_;
-  bool transpose_;
-  Param *weight_, *bias_;
-  // other parameters
-  int N;
-  const static int MAXN = 200;
-  int C[MAXN + 1][MAXN + 1];
-  int **index_;
+  int *word_index_;
+  int **char_index_;
+  int **concat_index_;
 };
 
 class PoolingOverTime : public MSCNNLayer {
@@ -154,48 +139,31 @@ class PoolingOverTime : public MSCNNLayer {
   void Setup(const LayerProto& conf, const vector<Layer*>& srclayers) override;
   void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
   void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
+  void SetIndex(const vector<Layer*>& srclayers);
+  int Binomial(int n, int k);
  private:
   int batchsize_;
   int vdim_;
-  int *index_;
-  //PoolingOverTimeProto_PoolMethod pool_;
+  int max_num_word_;
+  int max_word_len_;
+  int kernel_;
+  int *word_index_;
+  int **max_index_;
 };
 
-class OneDimConvLayer: public MSCNNLayer {
+class WordPoolingLayer: public MSCNNLayer {
  public:
-  ~OneDimConvLayer();
+  ~WordPoolingLayer();
   void Setup(const LayerProto& conf, const vector<Layer*>& srclayers) override;
   void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
   void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
  private:
-  int kernel_, pad_, stride_;
-  int batchsize_, vdim_;
-  int conv_width_, weight_width_;
-  int num_filters_;
-  Param *weight_, *bias_;
+   int batchsize_;
+   int vdim_;
+   int *index_;
 };
 
-/**
- * hid[t] = sigmoid(hid[t-1] * W + src[t])
- */
-class HiddenLayer : public MSCNNLayer {
- public:
-  ~HiddenLayer();
-  void Setup(const LayerProto& conf, const vector<Layer*>& srclayers) override;
-  void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
-  void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
-
-  const std::vector<Param*> GetParams() const override {
-    std::vector<Param*> params{weight_};
-    return params;
-  }
-
-
- private:
-  Param* weight_;
-};
-
-/**
+ /**
  * p(word at t+1 is from class c) = softmax(src[t]*Wc)[c]
  * p(w|c) = softmax(src[t]*Ww[Start(c):End(c)])
  * p(word at t+1 is w)=p(word at t+1 is from class c)*p(w|c)

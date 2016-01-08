@@ -84,17 +84,20 @@ using std::string;
 using std::max;
 using std::min;
 
-struct vocab_word {
+// event here is char (i.e., feature of diagnosis, labtest, etc)
+struct vocab_event {
   int cn;
   char word[MAX_STRING];
   int class_index;
 };
 
-struct vocab_word *vocab;
+struct vocab_event *vocab;
 int vocab_max_size;
 int vocab_size;
 int *vocab_hash;
 int vocab_hash_size;
+int word_max_len; // max num of chars in a word
+int sentence_max_len; // max num of words in a sentence 
 int debug_mode;
 int old_classes;
 int *class_start;
@@ -147,9 +150,9 @@ int addCharToVocab(char *word) {
 
   if (vocab_size + 2 >= vocab_max_size) {   // reallocate memory if needed
     vocab_max_size += 100;
-    vocab = (struct vocab_word *) realloc(
+    vocab = (struct vocab_event *) realloc(
         vocab,
-        vocab_max_size * sizeof(struct vocab_word));
+        vocab_max_size * sizeof(struct vocab_event));
   }
 
   hash = getWordHash(word);
@@ -237,7 +240,7 @@ void readWord(char *word, FILE *fin) {
 
 void sortVocab() {
   int a, b, max;
-  vocab_word swap;
+  vocab_event swap;
 
   for (a = 1; a < vocab_size; a++) {
     max = a;
@@ -254,7 +257,7 @@ int learnVocabFromEmrFile() {
   char ch[MAX_STRING];
   char chflag, wflag;
   FILE *fin;
-  int a, i, wcnt;
+  int a, i, ccnt, wcnt, wcntsum;
 
   for (a = 0; a < vocab_hash_size; a++) vocab_hash[a] = -1;
 
@@ -264,12 +267,25 @@ int learnVocabFromEmrFile() {
 
   addCharToVocab(const_cast<char *>(NL_STRING));
 
-  wcnt = 0;
+  ccnt = 0; // char count
+  wcnt = 0; // word count
+  wcntsum = 0; // word count in total
   wflag = '0';
 
   while (1) {
     chflag = readChar(ch, fin);  // chflag: N, c, t
-    if (chflag == 'c' && chflag != wflag) wcnt++;
+    if (chflag == 'c' && chflag != wflag) {
+      wcntsum++;
+      wcnt++; // word count +1
+      if (ccnt > word_max_len)
+        word_max_len = ccnt;
+      ccnt = 0;
+    }
+    if (chflag == 'N') {
+      if (wcnt > sentence_max_len)
+        sentence_max_len = wcnt;
+      wcnt = 0;
+    }
     wflag = chflag;
 
     if (feof(fin)) break;
@@ -281,13 +297,17 @@ int learnVocabFromEmrFile() {
     } else {
       vocab[i].cn++;
     }
+
+    ccnt++; // char count +1
   }
 
   sortVocab();
 
   if (debug_mode > 0) {
-    printf("Vocab size (# of chars): %d\n", vocab_size);
-    printf("Words in emr file: %d\n", wcnt);
+    printf("Vocab size (# of unique chars): %d\n", vocab_size);
+    printf("Max # of chars in a word: %d\n", word_max_len);
+    printf("Max # of words in a sentence: %d\n", sentence_max_len);
+    printf("Total # of Words in emr file: %d\n", wcntsum);
   }
 
   fclose(fin);
@@ -351,11 +371,14 @@ int init_class() {
   // debug_mode = 1;
   vocab_max_size = 100;  // largest length value for each word
   vocab_size = 0;
-  vocab = (struct vocab_word *) calloc(vocab_max_size,
-      sizeof(struct vocab_word));
+  vocab = (struct vocab_event *) calloc(vocab_max_size,
+      sizeof(struct vocab_event));
   vocab_hash_size = 100000000;
   vocab_hash = reinterpret_cast<int *>(calloc(vocab_hash_size, sizeof(int)));
   old_classes = 1;
+
+  word_max_len = 0;
+  sentence_max_len = 0;
 
   // generate vocab list from emr_file
   learnVocabFromEmrFile();
@@ -394,7 +417,8 @@ int create_data(const char *input_file, const char *output) {
     i = searchVocab(chstr);
     if (i == -1) {
       if (debug_mode) printf("unknown char [%s] detected!", chstr);
-    } else {
+    }
+    else {
       if (chflag == 'N') {
         label = atoi(chstr);  // store label (stage) of a patient
       }
@@ -403,32 +427,41 @@ int create_data(const char *input_file, const char *output) {
       }
       else if (chflag == 't' || chflag == '0') {
         //printf("\n---windex=%d, wlen=%d, delta=%d\n", wcnt, charlist.size(), delta);
+        wordcharRecord.set_label(label);
+        wordcharRecord.set_word_index(wcnt);
+        wordcharRecord.set_word_length(charlist.size());
+        wordcharRecord.set_delta_time(delta);  // set delta time from the previous event
         for(int k=0; k<charlist.size(); k++) {
           //printf("cindex=%d\n", charlist.at(k));
-          wordcharRecord.set_label(label);
-          wordcharRecord.set_word_index(wcnt);
-          wordcharRecord.set_word_length(charlist.size());
-          wordcharRecord.set_delta_time(delta);  // set delta time from the previous event
-          wordcharRecord.set_char_index(charlist.at(k));
+          wordcharRecord.add_char_index(charlist.at(k));
           /*
           int class_idx = vocab[charlist.at(k)].class_index;
           wordcharRecord.set_class_index(class_idx);
           wordcharRecord.set_class_start(class_start[class_idx]);
           wordcharRecord.set_class_end(class_end[class_idx]);
           */
-          int length = snprintf(key, BUFFER_LEN, "%05d", chcnt++);
-          wordcharRecord.SerializeToString(&value);
-          store->Write(string(key, length), value);
         }
-        wcnt++;
+        int length = snprintf(key, BUFFER_LEN, "%05d", wcnt++);
+        wordcharRecord.SerializeToString(&value);
+        store->Write(string(key, length), value);
+
         delta = atoi(chstr);
         charlist.clear();
         wordcharRecord.Clear();
+
+        if (chflag == '0') {
+          wordcharRecord.set_word_index(-1);
+          int length = snprintf(key, BUFFER_LEN, "%05d", -1);
+          wordcharRecord.SerializeToString(&value);
+          store->Write(string(key, length), value);
+          wordcharRecord.Clear();
+        }
+
       }
     }
   }
 
-  printf("# of words = %d\n", wcnt);
+  printf("# of Words = %d in %s\n", wcnt, input_file );
 
   fclose(fin);
   store->Flush();
@@ -624,8 +657,8 @@ int main(int argc, char **argv) {
   init_class();
 
   create_data(train_file, "train_data.bin");
-  //if (valid_mode) create_data(valid_file, "valid_data.bin");
-  //if (test_mode) create_data(test_file, "test_data.bin");
+  if (valid_mode) create_data(valid_file, "valid_data.bin");
+  if (test_mode) create_data(test_file, "test_data.bin");
 
   return 0;
 }
