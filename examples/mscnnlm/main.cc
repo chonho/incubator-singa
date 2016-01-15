@@ -42,10 +42,8 @@ int main(int argc, char **argv) {
   driver.RegisterLayer<mscnnlm::LossLayer, std::string>("kLoss");
   driver.RegisterLayer<mscnnlm::DataLayer, std::string>("kData");
   driver.RegisterLayer<mscnnlm::ConcatLayer, std::string>("kConcat");
-  driver.RegisterLayer<mscnnlm::ChConvolutionLayer, std::string>("kChConvolution");
   driver.RegisterLayer<mscnnlm::PoolingOverTime, std::string>("kPoolingOverTime");
   driver.RegisterLayer<mscnnlm::WordPoolingLayer, std::string>("kWordPooling");
-  driver.RegisterLayer<mscnnlm::WordConvolutionLayer, std::string>("kWordConvolution");
 
   singa::JobProto jobConf = driver.job_conf();
 

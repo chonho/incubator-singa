@@ -68,6 +68,7 @@ void DataLayer::Setup(const LayerProto& conf, const vector<Layer*>& srclayers) {
   int row = max_num_word_ * max_word_len_;
   int col = 4 + max_word_len_; // 4: label, word_idx, word_length, delta_time
   data_.Reshape(vector<int>{row, col});
+  aux_data_.resize(1);
   window_ = 0;
   LOG(ERROR) << "row, col: " << row << ", " << col;
 }
@@ -110,6 +111,8 @@ void DataLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
       CHECK(store_->Read(&key, &value));
     }
     ch.ParseFromString(value);
+    if (i == 0)
+      aux_data_.at(0) = ch.label();
     SetInst(i, ch, &data_, max_word_len_);
 
     if (ch.word_index() == -1) {
@@ -117,6 +120,7 @@ void DataLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
       break;
     }
   }
+  LOG(ERROR) << "aux_data_.at(0): " << aux_data_.at(0);
 }
 
 
@@ -277,13 +281,13 @@ void ConcatLayer::Setup(const LayerProto& conf,
   int rows = max_num_word_ * bino;
   LOG(ERROR) << "rows: " << rows;
   LOG(ERROR) << "cols: " << cols;
-  data_.Reshape(vector<int>{rows, cols});
+  data_.Reshape(vector<int>{1, rows, cols});
   grad_.ReshapeLike(data_);
   word_index_ = new int[max_num_word_];
   char_index_ = new int*[max_num_word_];
   for (int i = 0; i < max_num_word_; i++)
     char_index_[i] = new int[max_word_len_];
-  // for current word, a concat_index_ indicates all the combinations
+  // for each word, a concat_index_ indicates all the combinations
   concat_index_ = new int*[bino];
   for (int i = 0; i < bino; i++)
     concat_index_[i] = new int[kernel_];
@@ -300,14 +304,14 @@ void ConcatLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
 
   LOG(ERROR) << "start concatenation";
   for (int w = 0; w < window_; w++) {
+    LOG(ERROR) << "word_index_[" << w << "]: " << word_index_[w];
+    LOG(ERROR) << "kernel_: " << kernel_;
     Combinations(word_index_[w], kernel_);
+    LOG(ERROR) << "set concat_index_ ok!";
     int b = Binomial(word_index_[w], kernel_);
     int max = Binomial(max_word_len_, kernel_);
-    LOG(ERROR) << "b: " << b;
-    LOG(ERROR) << "max: " << max;
     for (int r = 0; r < b; r++)
       for (int c = 0; c < kernel_; c++) {
-        //LOG(ERROR) << char_index_[w][concat_index_[r][c]];
         memcpy(dst_ptr + ((w * max + r) * kernel_ + c) * word_dim_,
          src_ptr + char_index_[w][concat_index_[r][c]] * word_dim_, word_dim_);
       }
@@ -317,7 +321,7 @@ void ConcatLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
 
 void ConcatLayer::ComputeGradient(int flag, const vector<Layer*>& srclayers) {
   LOG(ERROR) << "ComputeGradient @ Concat";
-  auto grad = Tensor2(&grad_);
+  auto grad = Tensor3(&grad_);
   // initialize gsrc
   srclayers[0]->mutable_grad(this)->SetValue(0);
   auto gsrc = Tensor2(srclayers[0]->mutable_grad(this));
@@ -331,77 +335,13 @@ void ConcatLayer::ComputeGradient(int flag, const vector<Layer*>& srclayers) {
     for (int r = 0; r < b; r++)
       for (int c = 0; c < kernel_; c++)
         for (int i = 0; i < word_dim_; i++)
-          gsrc[concat_index_[r][c]][i] += grad[w * max + r][c * word_dim_ + i];
+          gsrc[concat_index_[r][c]][i] += grad[0][w * max + r][c * word_dim_ + i];
   }
   // use avg
   for (int w = 0; w < window_; w++) {
     for (int r = 0; r < word_index_[w]; r++)
       for (int i = 0; i < word_dim_; i++)
         gsrc[r][i] /= (word_index_[w] - 1);
-  }
-}
-
-ChConvolutionLayer::~ChConvolutionLayer() {
-  delete weight_;
-  delete bias_;
-}
-
-void ChConvolutionLayer::Setup(const LayerProto& conf,
-    const vector<Layer*>& srclayers) {
-  Layer::Setup(conf, srclayers);
-  LOG(ERROR) << "Setup @ ChConvolutionLayer";
-  CHECK_EQ(srclayers.size(), 1);
-  const auto& src = srclayers[0]->data(this);
-  // suppose that src has only two dimensions
-  batchsize_ = src.shape()[0];
-  vdim_ = src.count() / batchsize_;
-
-  // get conf parameters
-  num_filters_ = conf.GetExtension(chconv_conf).num_filters();
-
-  if (partition_dim() > 0)
-    num_filters_ /= srclayers.at(0)->num_partitions();
-
-  LOG(ERROR) << "batchsize_: " << batchsize_;
-  LOG(ERROR) << "vdim_: " << vdim_;
-  LOG(ERROR) << "num_filters_: " << num_filters_;
-
-  data_.Reshape(vector<int>{batchsize_, num_filters_});
-  grad_.ReshapeLike(data_);
-
-  weight_ = Param::Create(conf.param(0));
-  bias_ = Param::Create(conf.param(1));
-  weight_->Setup(vector<int>{vdim_, num_filters_});
-  bias_->Setup(vector<int>{num_filters_});
-}
-
-void ChConvolutionLayer::ComputeFeature(int flag,
-    const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "ComputeFeature @ ChConvolutionLayer";
-  auto data = Tensor2(&data_);
-  auto src = Tensor2(srclayers[0]->mutable_data(this));
-  auto weight = Tensor2(weight_->mutable_data());
-  auto bias = Tensor1(bias_->mutable_data());
-
-  data = dot(src, weight);
-  data += expr::repmat(bias, batchsize_);
-}
-
-void ChConvolutionLayer::ComputeGradient(int flag,
-    const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "ComputeGradient @ ChConvolutionLayer";
-  auto src = Tensor2(srclayers[0]->mutable_data(this));
-  auto grad = Tensor2(&grad_);
-  auto weight = Tensor2(weight_->mutable_data());
-  auto gweight = Tensor2(weight_->mutable_grad());
-  auto gbias = Tensor1(bias_->mutable_grad());
-
-  gbias = expr::sum_rows(grad);
-  gweight = dot(grad.T(), src);
-
-  if (srclayers[0]->mutable_grad(this) != nullptr) {
-    auto gsrc = Tensor2(srclayers[0]->mutable_grad(this));
-    gsrc = dot(grad, weight.T());
   }
 }
 
@@ -453,8 +393,14 @@ void PoolingOverTime::Setup(const LayerProto& conf,
   LOG(ERROR) << "max_word_len_: " << max_word_len_;
   LOG(ERROR) << "max_num_word_: " << max_num_word_;
 
-  batchsize_ = srclayers[0]->data(this).shape()[0];
-  vdim_ = srclayers[0]->data(this).count() / batchsize_;
+  int conv_dim = srclayers[0]->data(this).shape().size();
+  //LOG(ERROR) << "conv_dim: " << conv_dim;
+  //LOG(ERROR) << "shape[0]: " << srclayers[0]->data(this).shape()[0];
+  //LOG(ERROR) << "shape[1]: " << srclayers[0]->data(this).shape()[1];
+  //LOG(ERROR) << "shape[2]: " << srclayers[0]->data(this).shape()[2];
+  //LOG(ERROR) << "shape[3]: " << srclayers[0]->data(this).shape()[3];
+  batchsize_ = srclayers[0]->data(this).shape()[conv_dim - 2];
+  vdim_ = srclayers[0]->data(this).shape()[conv_dim - 3];
   LOG(ERROR) << "batchsize_: " << batchsize_;
   LOG(ERROR) << "vdim_: " << vdim_;
 
@@ -474,20 +420,20 @@ void PoolingOverTime::ComputeFeature(int flag,
     const vector<Layer*>& srclayers) {
   LOG(ERROR) << "CompFeat @ PoolingOverTime";
   auto data = Tensor3(&data_);
-  auto src = Tensor2(srclayers[0]->mutable_data(this));
+  auto src = Tensor4(srclayers[0]->mutable_data(this));
   auto datalayer = dynamic_cast<DataLayer*>(srclayers[1]);
   window_ = datalayer->window();
   //int max = Binomial(max_word_len_, kernel_);
   for (int w = 0; w < window_; w++) {
     for (int c = 0; c < vdim_; c++) {
-      data[0][w][c] = src[c][w * max_row_];
+      data[0][w][c] = src[0][c][w * max_row_][0];
       max_index_[w][c] = w * max_row_;
     }
     //int b = Binomial(word_index_[w], kernel_);
     for (int c = 0; c < vdim_; c++)
       for (int r = 0; r < max_row_; r++)
-        if (src[c][w * max_row_ + r] > data[0][w][c]) {
-          data[0][w][c] = src[c][w * max_row_ + r];
+        if (src[0][c][w * max_row_ + r][0] > data[0][w][c]) {
+          data[0][w][c] = src[0][c][w * max_row_ + r][0];
           max_index_[w][c] = w * max_row_ + r;
         }
   }
@@ -505,12 +451,12 @@ void PoolingOverTime::ComputeGradient(int flag,
   LOG(ERROR) << "ComputeGradient @ PoolingOverTime";
   auto grad = Tensor3(&grad_);
   srclayers[0]->mutable_grad(this)->SetValue(0);
-  auto gsrc = Tensor2(srclayers[0]->mutable_grad(this));
+  auto gsrc = Tensor4(srclayers[0]->mutable_grad(this));
   auto datalayer = dynamic_cast<DataLayer*>(srclayers[1]);
   window_ = datalayer->window();
   for (int w = 0; w < window_; w++)
     for (int c = 0; c < vdim_; c++)
-      gsrc[c][max_index_[w][c]] = grad[0][w][c];
+      gsrc[0][c][max_index_[w][c]][0] = grad[0][w][c];
 }
 
 
@@ -529,7 +475,7 @@ void WordPoolingLayer::Setup(const LayerProto& conf,
   int dim = src.shape().size();
   batchsize_ = src.shape()[dim - 2];
   vdim_ = src.shape()[dim - 3];
-  data_.Reshape(vector<int>{vdim_});
+  data_.Reshape(vector<int>{1, vdim_});
   grad_.ReshapeLike(data_);
   index_ = new int[vdim_];
 }
@@ -561,58 +507,6 @@ void WordPoolingLayer::ComputeGradient(int flag,
     gsrc[0][i][index_[i]][0] = grad[i];
 }
 
-WordConvolutionLayer::~WordConvolutionLayer() {
-  delete weight_;
-  delete bias_;
-}
-
-void WordConvolutionLayer::Setup(const LayerProto& conf,
-    const vector<Layer*>& srclayers) {
-  CHECK_EQ(srclayers.size(), 1);
-  Layer::Setup(conf, srclayers);
-
-  // get conf
-  num_filters_ = conf.GetExtension(wdconv_conf).num_filters();
-  kernel_ = conf.GetExtension(wdconv_conf).kernel();
-  // compute shape
-  const auto& src = srclayers[0]->data(this);
-  batchsize_ = src.shape()[0];
-  vdim_ = src.count() / batchsize_;
-
-  if (partition_dim() > 0)
-    num_filters_ /= srclayers.at(0)->num_partitions();
-  LOG(ERROR) << "num_filters_: " << num_filters_;
-  LOG(ERROR) << "kernel_: " << kernel_;
-  LOG(ERROR) << "batchsize_: " << batchsize_;
-  LOG(ERROR) << "vdim_: " << vdim_;
-
-  conv_height_ = batchsize_ - kernel_ + 1;
-  conv_width = num_filters_;
-  // these 2 parameters need to be modified
-  //col_height_ = kernel_ * vdim_;
-  //col_width_ = conv_height_;
-  data_.Reshape(vector<int>{num_filters_, conv_height_});
-  grad_.ReshapeLike(data_);
-  col_data_.Reshape(vector<int>{col_height_, col_width_});
-  col_grad_.Reshape(vector<int>{col_height_, col_width_});
-  weight_ = Param::Create(conf.param(0));
-  bias_ = Param::Create(conf.param(1));
-  weight_->Setup(vector<int>{num_filters_, col_height});
-  bias_->Setup(vector<int>{num_filters_});
-}
-
-void WordConvolutionLayer::ComputeFeature(int flag,
-    const vector<Layer*>& srclayers) {
-  auto src = Tensor2(srclayers[0]->mutable_data(this));
-  auto data = Tensor2(&data_);
-  auto col = Tensor2(&col_data_);
-  auto weight_ = Tensor2(weight_->mutable_data());
-  auto bias_ = Tensor2(bias_->mutable_data());
-}
-
-void WordConvolutionLayer::ComputeFeature(int flag,
-    const vector<Layer*>& srclayers) {
- }
 /*********** Implementation for LossLayer **********/
 LossLayer::~LossLayer() {
   delete word_weight_;

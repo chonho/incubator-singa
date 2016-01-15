@@ -133,19 +133,6 @@ class ConcatLayer : public MSCNNLayer {
   int **concat_index_;    // all k subsets of n elementes
 };
 
-class ChConvolutionLayer : public MSCNNLayer {
- public:
-  ~ChConvolutionLayer();
-  void Setup(const LayerProto& conf, const vector<Layer*>& srclayers) override;
-  void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
-  void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
- private:
-  int num_filters_;
-  int batchsize_;
-  int vdim_;
-  Param *weight_, *bias_;
-};
-
 class PoolingOverTime : public MSCNNLayer {
  public:
   ~PoolingOverTime();
@@ -164,22 +151,6 @@ class PoolingOverTime : public MSCNNLayer {
   int **max_index_;
 };
 
-class WordConvolutionLayer : public MSCNNLayer {
- public:
-  ~WordConvolutionLayer();
-  void Setup(const LayerProto& conf, const vector<Layer*>& srclayers) override;
-  void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
-  void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
- private:
-  int batchsize_;
-  int vdim_;
-  int num_filters_;
-  int kernel_;
-  int col_height_, col_width_;
-  int conv_height_, conv_width;
-  Blob<float> col_data_, col_grad_;
-  Param *weight_, *bias_;
-}
 class WordPoolingLayer: public MSCNNLayer {
  public:
   ~WordPoolingLayer();
