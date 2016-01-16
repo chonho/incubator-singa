@@ -267,6 +267,8 @@ void Map(const Blob<Dtype> & A, Blob<Dtype> * B) {
   } else {
 #ifdef USE_GPU
     gpu_e_f<Op>(A.count(), A.gpu_data(), B->mutable_gpu_data());
+#else
+    LOG(ERROR) << "Not implemented";
 #endif  // USE_GPU
   }
 }
@@ -280,7 +282,7 @@ template<typename Op, typename Dtype>
 void Map(const Blob<Dtype> & A, const Blob<Dtype> & B, Blob<Dtype> * C) {
   CHECK_EQ(A.count(), B.count()) << "Blobs must have the same size";
   CHECK_EQ(A.count(), C->count()) << "Blobs must have the same size";
-  cpu_e_f<Op>(A.count(), A.cpu_data(), B.cpu_data(), C->mutable_cpu_data());
+  //cpu_e_f<Op>(A.count(), A.cpu_data(), B.cpu_data(), C->mutable_cpu_data());
   auto context = Singleton<Context>::Instance();
   int device = context->device_id(std::this_thread::get_id());
   if (device == -1) {
@@ -306,6 +308,9 @@ void Map(Dtype alpha, const Blob<Dtype>& A, Blob<Dtype>* B) {
     cpu_e_f<Op>(A.count(), alpha, A.cpu_data(), B->mutable_cpu_data());
   } else {
 #ifdef USE_GPU
+    gpu_e_f<Op>(A.count(), A.gpu_data(), alpha, B->mutable_gpu_data());
+#else
+    LOG(FATAL) << "Not implemented";
 #endif  // USE_GPU
   }
 }
@@ -324,6 +329,7 @@ void Map(Dtype alpha, const Blob<Dtype>& A, const Blob<Dtype>& B,
         C->mutable_cpu_data());
   } else {
 #ifdef USE_GPU
+    LOG(ERROR) << "Not implemented";
 #endif  // USE_GPU
   }
 }
@@ -346,6 +352,8 @@ void Copy(const Blob<Dtype>& A, Blob<Dtype>* B) {
 #ifdef USE_GPU
   CUDA_CHECK(cudaMemcpy(static_cast<Dtype*>(B->mutable_gpu_data()),
              A.gpu_data(), sizeof(Dtype) * A.count(), cudaMemcpyDefault));
+#else
+  LOG(FATAL) << "Not implemented";
 #endif
   }
 }
@@ -670,6 +678,8 @@ void SampleUniform(Dtype low, Dtype high, Blob<Dtype>* A) {
 #ifdef USE_GPU
     gpu_sample_uniform(context->curand_generator(thread), A->count(), low, high,
         A->mutable_gpu_data());
+#else
+    LOG(FATAL) << "Not implemented";
 #endif
   }
 }
@@ -703,6 +713,21 @@ void Softmax(int nb_rows, const Blob<Dtype>& A, Blob<Dtype>* B) {
       B->mutable_cpu_data());
   } else {
 #ifdef USE_GPU
+#endif  // USE_GPU
+  }
+}
+
+template<typename Dtype>
+void Zero(Blob<Dtype>* B) {
+  auto context = Singleton<Context>::Instance();
+  int device = context->device_id(std::this_thread::get_id());
+  if (device == -1) {
+    B->SetValue(0);
+  } else {
+#ifdef USE_GPU
+    cudaMemset(B->mutable_gpu_data(), 0, B->count() * sizeof(float));
+#else
+    LOG(FATAL) << "Not implemented";
 #endif  // USE_GPU
   }
 }

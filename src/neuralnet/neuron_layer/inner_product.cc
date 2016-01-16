@@ -57,17 +57,31 @@ void InnerProductLayer::Setup(const LayerProto& conf,
 
 void InnerProductLayer::ComputeFeature(int flag,
     const vector<Layer*>& srclayers) {
-  MMDot(srclayers[0]->data(this), weight_->data().T(), &data_);
+  if (transpose_)
+    MMDot(srclayers[0]->data(this), weight_->data(), &data_);
+  else
+    MMDot(srclayers[0]->data(this), weight_->data().T(), &data_);
   MVAddRow(bias_->data(), &data_);
 }
 
 void InnerProductLayer::ComputeGradient(int flag,
     const vector<Layer*>& srclayers) {
+  float beta = 0.0f;
+  if (flag & kAggGrad)
+    beta = 1.0f;
+  MVSumRow(1.0f, beta, grad_, bias_->mutable_grad());
+  if (transpose_)
+    GEMM(1.0f, beta, srclayers[0]->data(this).T(), grad_,
+        weight_->mutable_grad());
+  else
+    GEMM(1.0f, beta, grad_.T(), srclayers[0]->data(this),
+        weight_->mutable_grad());
 
-  MVSumRow(1.0f, 0.0f, grad_, bias_->mutable_grad());
-  MMDot(grad_.T(), srclayers[0]->data(this), weight_->mutable_grad());
   if (srclayers[0]->mutable_grad(this) != nullptr) {
-    MMDot(grad_, weight_->data(), srclayers[0]->mutable_grad(this));
+    if (transpose_)
+      MMDot(grad_, weight_->data().T(), srclayers[0]->mutable_grad(this));
+    else
+      MMDot(grad_, weight_->data(), srclayers[0]->mutable_grad(this));
   }
 }
 }  // namespace singa

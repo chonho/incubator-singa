@@ -166,9 +166,14 @@ void Param::InitValues(int version) {
   set_version(version);
 }
 
-void Param::ShareFrom(Param* other, bool cpu_only) {
+void Param::ShareDataFrom(Param* other, bool cpu_only) {
+  if (this == other) {
+    LOG(WARNING) << "No need to share Param with itself";
+    return;
+  }
+
   proto_.set_owner(other->owner());
-  CHECK(data_.shape() == other->data_.shape());
+  CHECK_EQ(data_.count(), other->data_.count());
   data_.ShareData(&(other->data_), cpu_only);
   if (grad_.count() == 0)
     grad_.Reshape(data_.shape());
@@ -181,6 +186,16 @@ void Param::ShareFrom(Param* other, bool cpu_only) {
   // change pending list size equal to slice size
   pending_get_.resize(other->pending_get_.size());
   pending_update_.resize(other->pending_update_.size());
+}
+
+void Param::ShareFrom(Param* other) {
+  if (this == other) {
+    LOG(WARNING) << "No need to share Param with itself";
+    return;
+  }
+
+  ShareDataFrom(other, false);
+  grad_.ShareData(&(other->grad_), false);
 }
 
 void Param::FromProto(const BlobProto& blob) {

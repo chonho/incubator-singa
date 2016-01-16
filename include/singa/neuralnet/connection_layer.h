@@ -29,6 +29,24 @@
 #include "singa/neuralnet/layer.h"
 
 namespace singa {
+/**
+ * Used inside SplitLayer and SliceLayer to locate the out-going connection
+ * index given the Layer pointer.
+ */
+class Layer2Index {
+ public:
+  int Get(const Layer* layer) {
+    if (layer2idx_.find(layer) == layer2idx_.end()) {
+      int idx =  layer2idx_.size();
+      layer2idx_[layer] = idx;
+    }
+    return layer2idx_[layer];
+  }
+
+ private:
+  std::unordered_map<const Layer*, int> layer2idx_;
+};
+
 
 class BridgeLayer : public ConnectionLayer {
  public:
@@ -83,6 +101,10 @@ class ConcateLayer : public ConnectionLayer {
   void Setup(const LayerProto& proto, const vector<Layer*>& srclayers) override;
   void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
   void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
+
+ private:
+  int num_concates_ = 0;
+  int concate_dim_ = 0;
 };
 
 /**
@@ -97,10 +119,16 @@ class SliceLayer : public ConnectionLayer {
   void Setup(const LayerProto& proto, const vector<Layer*>& srclayers) override;
   void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
   void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
-  const Blob<float>& data(const Layer* from) const override;
-  const Blob<float>& grad(const Layer* from) const override;
+  const std::string ToString(bool debug, int flag) override;
+  const Blob<float>& data(const Layer* from) override;
+  const Blob<float>& grad(const Layer* from) override;
   Blob<float>* mutable_data(const Layer* from) override;
   Blob<float>* mutable_grad(const Layer* from) override;
+
+ private:
+  int num_slices_ = 0;
+  int slice_dim_ = 0;
+  Layer2Index layer_idx_;
 };
 
 /**
@@ -116,8 +144,41 @@ class SplitLayer : public ConnectionLayer {
   void Setup(const LayerProto& proto, const vector<Layer*>& srclayers) override;
   void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
   void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
-  const Blob<float>& grad(const Layer* from) const override;
+  const std::string ToString(bool debug, int flag) override;
+  const Blob<float>& grad(const Layer* from) override;
   Blob<float>* mutable_grad(const Layer* from) override;
+
+ private:
+  int num_splits_ = 0;
+  Layer2Index layer_idx_;
+};
+
+/**
+ * Dummy layer for RNN models, which provides input for other layers.
+ *
+ * Particularly, it is used in the test phase of RNN models to connect other
+ * layers and avoid cycles in the neural net config.
+ */
+class RNNDummyLayer : public ConnectionLayer {
+ public:
+  void Setup(const LayerProto& proto, const vector<Layer*>& srclayers) override;
+  void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
+  void ComputeGradient(int flag, const vector<Layer*>& srclayers) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  const string srclayer(int step) const {
+    if (step > 0)
+      return dynamic_src_;
+    else
+      return "";
+  }
+
+ private:
+  string dynamic_src_;
+  float low_, high_;
+  bool integer_;
+  Layer* srclayer_;
 };
 
 

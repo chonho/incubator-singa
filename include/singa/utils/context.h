@@ -100,6 +100,12 @@ class Context {
   }
 
   /**
+   * @return the device ID of the current thread.
+   */
+  int device_id() {
+    return device_id(std::this_thread::get_id());
+  }
+  /**
    * @return the ID of the device attached to a given CPU thread, or -1 if this
    * thread has not been attached GPU device.
    */
@@ -154,9 +160,9 @@ class Context {
    */
   std::mt19937* rand_generator(const std::thread::id& tid) {
     if (rand_generator_.find(tid) == rand_generator_.end()) {
-      CHECK(seed_.find(tid) != seed_.end());
+      // CHECK(seed_.find(tid) != seed_.end());
       auto seed = static_cast<unsigned>(seed_[tid]);
-      if (seed_[tid] == -1)
+      if (seed_.find(tid) == seed_.end() || seed_.at(tid) == -1)
         seed = std::chrono::system_clock::now().time_since_epoch().count();
       rand_generator_[tid] = new std::mt19937(seed);
     }

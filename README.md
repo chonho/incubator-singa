@@ -22,6 +22,7 @@ The current code depends on the following external libraries:
   * `czmq` (Mozilla Public License Version 2.0)
   * `zookeeper` (Apache 2.0)
 
+We have tested SINGA on Ubuntu 12.04, Ubuntu 14.01 and CentOS 6.
 You can install all dependencies into `$PREFIX` folder by
 
     ./thirdparty/install.sh all $PREFIX
@@ -33,6 +34,15 @@ variables to continue the building instructions,
     $ export CPLUS_INCLUDE_PATH=$PREFIX/include:$CPLUS_INCLUDE_PATH
     $ export LIBRARY_PATH=$PREFIX/lib:$LIBRARY_PATH
     $ export PATH=$PREFIX/bin:$PATH
+
+###Optional dependencies
+For advanced features, the following libraries are needed:
+
+  * `cuda` (NIVIDA CUDA Toolkit EUL)
+  * `cudnn` (NIVIDA CuDNN EULA)
+  * `Apache Mesos` (Apache 2.0)
+  * `Apache Hadoop` (Apache 2.0)
+  * `libhdfs3` (Apache 2.0)
 
 ##Documentation
 
@@ -47,6 +57,24 @@ Please make sure you have `g++ >= 4.8.1` before building SINGA.
     $ ./configure
     # refer to the FAQs below for error during make
     $ make
+
+To compile with GPU support, you should run:
+
+    $ ./configure --enable-cuda --with-cuda=/CUDA/PATH --enable-cudnn --with-cudnn=/CUDNN/PATH
+
+--with-cuda and --with-cudnn are optional as by default the script will search system paths.
+Please kindly set proper environment parameters (LD_LIBRARY_PATH, LIBRARY_PATH, etc.) when you run the code.
+
+To compile with HDFS support, you should run:
+
+    $ ./configure --enable-hdfs --with-libhdfs=/PATH/TO/HDFS3
+
+--with-libhdfs is optional as by default the path is /usr/local/.
+
+You can also run the following command for further configuration.
+
+    $ ./configure --help
+
 
 ##Running Examples
 

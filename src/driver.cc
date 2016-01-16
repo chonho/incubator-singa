@@ -55,10 +55,13 @@ void Driver::Init(int argc, char **argv) {
     ReadProtoFromTextFile(argv[arg_pos+1], &singa_conf_);
   else
     ReadProtoFromTextFile("conf/singa.conf", &singa_conf_);
+  // set log path
+  if (singa_conf_.has_log_dir())
+    SetupLog(singa_conf_.log_dir(), "driver");
   // job conf passed by users as "-conf <path>"
   arg_pos = ArgPos(argc, argv, "-conf");
-  CHECK_NE(arg_pos, -1);
-  ReadProtoFromTextFile(argv[arg_pos+1], &job_conf_);
+  if (arg_pos != -1)
+    ReadProtoFromTextFile(argv[arg_pos+1], &job_conf_);
 
   // register layers
 
@@ -68,16 +71,25 @@ void Driver::Init(int argc, char **argv) {
   RegisterLayer<ImagePreprocessLayer, int>(kImagePreprocess);
   RegisterLayer<RecordOutputLayer, int>(kRecordOutput);
   RegisterLayer<CSVOutputLayer, int>(kCSVOutput);
+  RegisterLayer<CharRNNInputLayer, int>(kCharRNN);
+  RegisterLayer<RNNLabelLayer, int>(kRNNLabel);
+  RegisterLayer<OneHotLayer, int>(kOneHot);
+  RegisterLayer<CharRNNOutputLayer, int>(kCharRNNOutput);
 
+  // connection layers
   RegisterLayer<BridgeDstLayer, int>(kBridgeDst);
   RegisterLayer<BridgeSrcLayer, int>(kBridgeSrc);
+  RegisterLayer<ConcateLayer, int>(kConcate);
+  RegisterLayer<SliceLayer, int>(kSlice);
+  RegisterLayer<SplitLayer, int>(kSplit);
+  RegisterLayer<RNNDummyLayer, int>(kRNNDummy);
 
   RegisterLayer<AccuracyLayer, int>(kAccuracy);
   RegisterLayer<ArgSortLayer, int>(kArgSort);
   RegisterLayer<ConvolutionLayer, int>(kConvolution);
   RegisterLayer<CConvolutionLayer, int>(kCConvolution);
   RegisterLayer<CPoolingLayer, int>(kCPooling);
-  RegisterLayer<ConcateLayer, int>(kConcate);
+  RegisterLayer<EmbeddingLayer, int>(kEmbedding);
 
 #ifdef USE_CUDNN
   RegisterLayer<CudnnActivationLayer, int>(kCudnnActivation);
@@ -88,6 +100,8 @@ void Driver::Init(int argc, char **argv) {
   RegisterLayer<CudnnSoftmaxLossLayer, int>(kCudnnSoftmaxLoss);
 #endif
 
+  RegisterLayer<DropoutLayer, int>(kDropout);
+  RegisterLayer<DummyLayer, int>(kDummy);
   RegisterLayer<EuclideanLossLayer, int>(kEuclideanLoss);
   RegisterLayer<InnerProductLayer, int>(kInnerProduct);
   RegisterLayer<LabelLayer, int>(kLabel);
@@ -101,11 +115,10 @@ void Driver::Init(int argc, char **argv) {
   RegisterLayer<ReLULayer, int>(kReLU);
   RegisterLayer<ShardDataLayer, int>(kShardData);
   RegisterLayer<SigmoidLayer, int>(kSigmoid);
-  RegisterLayer<SliceLayer, int>(kSlice);
   RegisterLayer<SoftmaxLossLayer, int>(kSoftmaxLoss);
-  RegisterLayer<SplitLayer, int>(kSplit);
   RegisterLayer<STanhLayer, int>(kSTanh);
   RegisterLayer<SoftmaxLayer, int>(kSoftmax);
+  RegisterLayer<GRULayer, int>(kGRU);
 
 #ifdef USE_LMDB
   RegisterLayer<LMDBDataLayer, int>(kLMDBData);
@@ -114,7 +127,7 @@ void Driver::Init(int argc, char **argv) {
   // register updaters
   RegisterUpdater<AdaGradUpdater>(kAdaGrad);
   RegisterUpdater<NesterovUpdater>(kNesterov);
-  // TODO(wangwei) RegisterUpdater<kRMSPropUpdater>(kRMSProp);
+  RegisterUpdater<RMSPropUpdater>(kRMSProp);
   RegisterUpdater<SGDUpdater>(kSGD);
 
   // register learning rate change methods
@@ -128,6 +141,7 @@ void Driver::Init(int argc, char **argv) {
 
   // register workers
   RegisterWorker<BPWorker>(kBP);
+  RegisterWorker<BPTTWorker>(kBPTT);
   RegisterWorker<CDWorker>(kCD);
 
   // register params
@@ -153,10 +167,10 @@ void Driver::Train(bool resume, const std::string str) {
 }
 
 void Driver::Train(bool resume, const JobProto& job_conf) {
-  Cluster::Setup(job_id_, singa_conf_, job_conf.cluster());
   if (singa_conf_.has_log_dir())
     SetupLog(singa_conf_.log_dir(),
         std::to_string(job_id_) + "-" + job_conf.name());
+  Cluster::Setup(job_id_, singa_conf_, job_conf.cluster());
   tinydir_dir workspace;
   if (tinydir_open(&workspace, job_conf.cluster().workspace().c_str()) == -1)
     LOG(FATAL) << "workspace not exist: " << job_conf.cluster().workspace();
@@ -173,6 +187,12 @@ void Driver::Train(bool resume, const JobProto& job_conf) {
   Train(job);
 }
 
+void Driver::Test(const std::string str) {
+  JobProto job_conf;
+  job_conf.ParseFromString(str);
+  Test(job_conf);
+}
+
 void Driver::Test(const JobProto& job_conf) {
   Cluster::Setup(job_id_, singa_conf_, job_conf.cluster());
   Cluster::Get()->Register(getpid(), "localhost");
@@ -180,6 +200,8 @@ void Driver::Test(const JobProto& job_conf) {
   auto worker = Worker::Create(job_conf.train_one_batch());
   worker->Setup(0, 0, job_conf, nullptr, nullptr, nullptr);
   auto net = NeuralNet::Create(job_conf.neuralnet(), kTest, 1);
+  WriteStringToTextFile(Cluster::Get()->vis_folder() + "/test_net.json",
+      net->ToGraph(true).ToJson());
   vector<string> paths;
   for (const auto& p : job_conf.checkpoint_path())
     paths.push_back(p);
@@ -201,6 +223,8 @@ void Driver::Train(const JobProto& job_conf) {
   }
 
   NeuralNet* net = NeuralNet::Create(job_conf.neuralnet(), kTrain, grp_size);
+  WriteStringToTextFile(cluster->vis_folder() + "/train_net.json",
+      net->ToGraph(true).ToJson());
   const vector<Worker*> workers = CreateWorkers(job_conf, net);
   const vector<Server*> servers = CreateServers(job_conf, net);
 

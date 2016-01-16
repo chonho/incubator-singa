@@ -36,6 +36,20 @@ using std::string;
 
 // TODO(wangwei) make AuxType a template argument for Layer.
 using AuxType = int;
+
+inline const string AddUnrollingPrefix(int unroll_idx, const string& name) {
+  return std::to_string(unroll_idx) + "#" + name;
+}
+inline const string AddPartitionSuffix(int partition_idx, const string& name) {
+  return name + "@" + std::to_string(partition_idx);
+}
+
+
+inline const string AddPrefixSuffix(int unroll_idx, int partition_idx,
+    const string& name) {
+  return std::to_string(unroll_idx) + "#" + name + "@" +
+    std::to_string(partition_idx);
+}
 /**
  * Base layer class.
  *
@@ -174,6 +188,19 @@ class Layer {
    */
   inline const std::string& name() const { return layer_conf_.name(); }
   /**
+   * Return the index of the unrolled layer within the unrolling group, which
+   * should be [0, max_unrolling_length)
+   */
+  inline const int unroll_index() const { return layer_conf_.unroll_index(); }
+
+  /**
+   * @return a const ref for Blob vector storing feature values of this layer.
+   */
+  virtual const vector<Blob<float>*>& data() const {
+    return datavec_;
+  }
+
+  /**
    * @param[in] from pointer to one of the dst layer. For some layers, they have
    * more than one data Blob. In this case, this argument identifies the layer
    * that is requesting the data Blob.
@@ -182,21 +209,19 @@ class Layer {
    * virtual const vector<Blob<float>>& data() const or
    * virtual const Blob<float>& data(int k) const instead}.
    */
-  virtual const Blob<float>& data(const Layer* from) const {
+  virtual const Blob<float>& data(const Layer* from) {
     return data_;
   }
   /**
-   * @return a const ref for Blob vector storing feature values of this layer.
-   */
-  virtual const vector<Blob<float>*>& data() const {
-    return datavec_;
-  }
-  /**
    * @return a const ref for the kth Blob.
+   * TODO(wangwei) if make this function const, there will be a warning
+   * indicating that data(const Layer*) and this function are ambiguous for
+   * data(0).
    */
-  virtual const Blob<float>& data(int k) const {
+  virtual const Blob<float>& data(int k) {
     return *datavec_.at(k);
   }
+
   /**
    * @see data().
    * @return the pointer to the Blob storing feature values of this layer.
@@ -226,7 +251,7 @@ class Layer {
    * virtual const vector<Blob<float>>& grad() const or
    * virtual const Blob<float>& grad(int k) const instead}.
    */
-  virtual const Blob<float>& grad(const Layer* from) const {
+  virtual const Blob<float>& grad(const Layer* from) {
     return grad_;
   }
   /**
@@ -286,7 +311,7 @@ class InputLayer : virtual public Layer {
     return nullptr;
     // LOG(FATAL) << "Input layer has no gradient blob";
   }
-  const Blob<float>& grad(const Layer* from) const override {
+  const Blob<float>& grad(const Layer* from) override {
     return grad_;
     // LOG(FATAL) << "Input layer has no gradient blob";
   }
@@ -312,7 +337,7 @@ class LossLayer : virtual public Layer {
     return nullptr;
     // LOG(FATAL) << "Loss layer has no gradient blob";
   }
-  const Blob<float>& grad(const Layer* from) const override {
+  const Blob<float>& grad(const Layer* from) override {
     return grad_;
     // LOG(FATAL) << "Loss layer has no gradient blob";
   }
@@ -328,7 +353,7 @@ class OutputLayer : virtual public Layer {
     return nullptr;
     // LOG(FATAL) << "Output layer has no gradient blob";
   }
-  const Blob<float>& grad(const Layer* from) const override {
+  const Blob<float>& grad(const Layer* from) override {
     return grad_;
     // LOG(FATAL) << "Output layer has no gradient blob";
   }

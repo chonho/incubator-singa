@@ -58,6 +58,7 @@ class NeuralNet {
   static NeuralNet* Create(const NetProto& net_conf, Phase phase,
                            int npartitions);
 
+  static const NetProto Unrolling(const NetProto& net_conf);
   /**
    * construct the net structure from protocol buffer.
    * @param netproto neural net config
@@ -108,7 +109,23 @@ class NeuralNet {
       << "layer (" << layer->name() << " ) has no source layers";
     return src_map_.at(layer);
   }
+  Layer* last_unroll_layer(const Layer* layer) const {
+    auto pos = layer->name().find("#");
+    if (pos == std::string::npos)
+      return nullptr;
+    string last_name = std::to_string(unroll_len_) + layer->name().substr(pos);
+    CHECK(name2layer_.find(last_name) != name2layer_.end())
+      << "layer name = " << last_name << " has no unroll layers";
+    return name2layer_.at(last_name);
+  }
   inline Param* paramid2param(int id) const { return paramid2param_.at(id); }
+
+  /**
+   * Conver the neural net into graph representation.
+   * Each layer is converted into a node.
+   * @param include_shape if true label the node with shape info
+   */
+  const Graph ToGraph(bool include_shape) const;
 
  protected:
   /**
@@ -124,13 +141,25 @@ class NeuralNet {
   /**
    * Create neural net from graph, one layer per node.
    */
-  void CreateNetFromGraph(Graph* graph, int num_partitions);
+  void CreateNetFromGraph(Graph* graph);
   /**
    * prepare data structures, e.g., params_, layers_, etc.
    */
   void PrepareDataStructures();
+  void PrepareDataStructures(const NetProto& proto);
+  /**
+   * add split layers, due to connections to multiple dst-layers
+   */
+  NetProto AddModelSplitLayers(const NetProto& netproto);
+  /**
+   * add connection layers, due to partition of the whole nerualnet
+   * this should be done after AddModelSplitLayers()
+   */
+  NetProto AddPartitionConnectionLayers(const NetProto& netproto,
+                                        int npartitions);
 
  protected:
+  int unroll_len_ = 1;
   std::vector<Layer*> layers_;
   std::vector<Param*> params_;
 

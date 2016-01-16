@@ -175,12 +175,12 @@ TEST(ConnectionLayerTest, DataSliceTest) {
   src_slice.push_back(static_cast<Layer*>(&in));
   LayerProto proto_slice;
   proto_slice.set_name("slice");
-  proto_slice.set_partition_dim(0);
-  proto_slice.set_num_partitions(K);
+  proto_slice.mutable_slice_conf()->set_slice_dim(0);
+  proto_slice.mutable_slice_conf()->set_num_slices(K);
   SliceLayer slice;
   slice.Setup(proto_slice, src_slice);
-  ASSERT_EQ(slice.data(static_cast<Layer*>(&slice)).shape(0), N / K);
-  ASSERT_EQ(slice.data(static_cast<Layer*>(&slice)).shape(1), M);
+  ASSERT_EQ(slice.data(nullptr).shape(0), N / K);
+  ASSERT_EQ(slice.data(nullptr).shape(1), M);
 
   // use dummy as output layers
   LayerProto proto_out[K];
@@ -232,12 +232,12 @@ TEST(ConnectionLayerTest, ModelSliceTest) {
   src_slice.push_back(static_cast<Layer*>(&in));
   LayerProto proto_slice;
   proto_slice.set_name("slice");
-  proto_slice.set_partition_dim(1);
-  proto_slice.set_num_partitions(K);
+  proto_slice.mutable_slice_conf()->set_slice_dim(1);
+  proto_slice.mutable_slice_conf()->set_num_slices(K);
   SliceLayer slice;
   slice.Setup(proto_slice, src_slice);
-  ASSERT_EQ(slice.data(static_cast<Layer*>(&slice)).shape(0), N);
-  ASSERT_EQ(slice.data(static_cast<Layer*>(&slice)).shape(1), M / K);
+  ASSERT_EQ(slice.data(nullptr).shape(0), N);
+  ASSERT_EQ(slice.data(nullptr).shape(1), M / K);
 
   // use dummy as output layers
   LayerProto proto_out[K];
@@ -297,8 +297,8 @@ TEST(ConnectionLayerTest, DataConcateTest) {
     src_concate.push_back(static_cast<Layer*>(&in[i]));
   LayerProto proto_concate;
   proto_concate.set_name("concate");
-  proto_concate.set_partition_dim(0);
-  proto_concate.set_num_partitions(K);
+  proto_concate.mutable_concate_conf()->set_concate_dim(0);
+  proto_concate.mutable_concate_conf()->set_num_concates(K);
   ConcateLayer concate;
   concate.Setup(proto_concate, src_concate);
   ASSERT_EQ(concate.data(static_cast<Layer*>(&concate)).shape(0), N);
@@ -355,8 +355,8 @@ TEST(ConnectionLayerTest, ModelConcateTest) {
     src_concate.push_back(static_cast<Layer*>(&in[i]));
   LayerProto proto_concate;
   proto_concate.set_name("concate");
-  proto_concate.set_partition_dim(1);
-  proto_concate.set_num_partitions(K);
+  proto_concate.mutable_concate_conf()->set_concate_dim(1);
+  proto_concate.mutable_concate_conf()->set_num_concates(K);
   ConcateLayer concate;
   concate.Setup(proto_concate, src_concate);
   ASSERT_EQ(concate.data(static_cast<Layer*>(&concate)).shape(0), N);
@@ -413,7 +413,7 @@ TEST(ConnectionLayerTest, SplitTest) {
   src_split.push_back(static_cast<Layer*>(&in));
   LayerProto proto_split;
   proto_split.set_name("split");
-  proto_split.set_num_partitions(K);
+  proto_split.mutable_split_conf()->set_num_splits(K);
   SplitLayer split;
   split.Setup(proto_split, src_split);
   ASSERT_EQ(split.data(static_cast<Layer*>(&split)).shape(0), N);

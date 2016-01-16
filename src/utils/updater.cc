@@ -7,9 +7,9 @@
 * to you under the Apache License, Version 2.0 (the
 * "License"); you may not use this file except in compliance
 * with the License.  You may obtain a copy of the License at
-* 
+*
 *   http://www.apache.org/licenses/LICENSE-2.0
-* 
+*
 * Unless required by applicable law or agreed to in writing,
 * software distributed under the License is distributed on an
 * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -59,7 +59,10 @@ float FixedStepLRGen::Get(int step) {
 float StepLRGen::Get(int step) {
   // do not cast int to float
   int freq = proto_.step_conf().change_freq();
-  return  proto_.base_lr() * pow(proto_.step_conf().gamma(), step / freq);
+  float lr = proto_.base_lr() * pow(proto_.step_conf().gamma(), step / freq);
+  LOG_IF(INFO, step % freq == 0) << "Update learning rate to " << lr
+    << " @ step " << step;
+  return lr;
 }
 
 float LinearLRGen::Get(int step) {
@@ -98,9 +101,24 @@ void Updater::Init(const UpdaterProto& proto) {
   momentum_ = proto.momentum();
   weight_decay_ = proto.weight_decay();
   lr_gen_ = LRGenerator::Create(proto.learning_rate());
+  clip_low_ = proto.clip_low();
+  clip_high_ = proto.clip_high();
+}
+
+void Updater::Clip(const float low, const float high, Param* param) {
+  Blob<float>* grad = param->mutable_grad();
+  float* ptr = grad->mutable_cpu_data();
+  for (int i = 0; i < grad->count(); i++) {
+    if (ptr[i] > high)
+      ptr[i] = high;
+    else if (ptr[i] < low)
+      ptr[i] = low;
+  }
 }
 
 void SGDUpdater::Update(int step, Param* param, float grad_scale) {
+  if (clip_high_ > clip_low_)
+    Clip(clip_low_, clip_high_, param);
   Shape<1> s = Shape1(param->size());
   Tensor<cpu, 1> data(param->mutable_cpu_data(), s);
   Tensor<cpu, 1> grad(param->mutable_cpu_grad(), s);
@@ -122,6 +140,9 @@ void SGDUpdater::Update(int step, Param* param, float grad_scale) {
 
 /***********************Nesterov******************************/
 void NesterovUpdater::Update(int step, Param* param, float grad_scale) {
+ if (clip_high_ > clip_low_)
+    Clip(clip_low_, clip_high_, param);
+
   Shape<1> s = Shape1(param->size());
   Tensor<cpu, 1> data(param->mutable_cpu_data(), s);
   Tensor<cpu, 1> grad(param->mutable_cpu_grad(), s);
@@ -140,6 +161,8 @@ void NesterovUpdater::Update(int step, Param* param, float grad_scale) {
 }
 /***********************AdaGrad******************************/
 void AdaGradUpdater::Update(int step, Param* param, float grad_scale) {
+  if (clip_high_ > clip_low_)
+    Clip(clip_low_, clip_high_, param);
   Shape<1> s = Shape1(param->size());
   Tensor<cpu, 1> data(param->mutable_cpu_data(), s);
   Tensor<cpu, 1> grad(param->mutable_cpu_grad(), s);
@@ -154,31 +177,30 @@ void AdaGradUpdater::Update(int step, Param* param, float grad_scale) {
   data -= lr * grad / (F<sqrtop>(history, proto_.delta()));
 }
 
-/***********************RMSProp******************************
-void RMSPropUpdater::Init(const UpdaterProto& proto){
+/***********************RMSProp******************************/
+void RMSPropUpdater::Init(const UpdaterProto& proto) {
   Updater::Init(proto);
-  base_lr_ = proto.base_lr();
-  CHECK_GT(base_lr_, 0);
-  delta_ = proto.delta();
   rho_ = proto.rmsprop_conf().rho();
-  weight_decay_ = proto.weight_decay();
 }
 
-void RMSPropUpdater::Update(int step, Param* param, float grad_scale){
+void RMSPropUpdater::Update(int step, Param* param, float grad_scale) {
+ if (clip_high_ > clip_low_)
+    Clip(clip_low_, clip_high_, param);
+
   Shape<1> s=Shape1(param->size());
   Tensor<cpu, 1> data(param->mutable_cpu_data(), s);
   Tensor<cpu, 1> grad(param->mutable_cpu_grad(), s);
   Tensor<cpu, 1> history(param->mutable_cpu_history(), s);
-  history=history*rho_+(1-rho_)*F<op::square>(grad*grad_scale);
-  float lr=GetLearningRate(step)*param->lr_scale();
-  float wd=weight_decay_*param->wd_scale();
-  if(wd>0){ // L2 regularization
-    grad+=data*wd;
-  }
-  data-=lr*grad/(F<op::sqrtop>(history,delta_));
+  float lr = lr_gen_->Get(step) * param->lr_scale();
+  float wd = weight_decay_ * param->wd_scale();
+  if (grad_scale != 1.f)
+    grad *= grad_scale;
+  if (wd > 0)  //  L2 regularization, should be done after timing grad_scale
+    grad += data * wd;
+  history = history * rho_ + (1 - rho_) * F<square>(grad);
+  data -= lr * grad / (F<sqrtop>(history, proto_.delta()));
 }
-
-***********************AdaDelta******************************
+/***********************AdaDelta******************************
 void AdaDeltaUpdater::Init(const UpdaterProto& proto){
   Updater::Init(proto);
   delta_=proto.delta();

@@ -38,7 +38,7 @@ AC_PROG_LIBTOOL
 
 # Setup custom CUDA paths
 AC_ARG_ENABLE(cuda,
-	[AS_HELP_STRING(--enable-cuda,enable CUDA support)],
+  [AS_HELP_STRING(--enable-cuda,enable CUDA support)],
     cudaval="yes",
     cudaval="no")
 AM_CONDITIONAL(DCUDA, [test "$cudaval" = "yes"])
@@ -55,7 +55,6 @@ if test "$cuda_prefix" == "yes"; then
     fi
 fi
 
-
 if test x"$cudaval" = x"yes"; then
     AC_MSG_CHECKING([nvcc in $cuda_prefix/bin])
     if test -x "$cuda_prefix/bin/nvcc"; then
@@ -71,17 +70,17 @@ if test x"$cudaval" = x"yes"; then
     LIBS="$LIBS $CUDA_LIBS"
     LDFLAGS="$LDFLAGS $CUDA_LDFLAGS"
     NVCC="nvcc"
-	DEBUG="-DUSE_GPU"
+  DEBUG="-DUSE_GPU"
     AC_DEFINE(DCUDA,[1],[Defined if CUDA should be used])
-	AC_CHECK_LIB([cuda], [main], [], [
- 		AC_MSG_ERROR([unable to find cuda library])
- 	 ])
-	AC_CHECK_LIB([cudart], [main], [], [
-	  	AC_MSG_ERROR([unable to find cudart library])
-  	])
-	AC_CHECK_LIB([curand], [main], [], [
- 	 	AC_MSG_ERROR([unable to find curand library])
-  	])
+  AC_CHECK_LIB([cuda], [main], [], [
+     AC_MSG_ERROR([unable to find cuda library])
+    ])
+  AC_CHECK_LIB([cudart], [main], [], [
+      AC_MSG_ERROR([unable to find cudart library])
+    ])
+  AC_CHECK_LIB([curand], [main], [], [
+      AC_MSG_ERROR([unable to find curand library])
+    ])
 else
     CUDA_CFLAGS=""
     CUDA_LDFLAGS=""
@@ -149,35 +148,72 @@ AC_CHECK_LIB([protobuf], [main], [], [
 
 AC_ARG_ENABLE(lmdb,
      AS_HELP_STRING([--enable-lmdb],[enable debug option]),
-	 [enable_lmdb=yes],[enable_lmdb=no])
+   [enable_lmdb=yes],[enable_lmdb=no])
 AM_CONDITIONAL(LMDB, test "$enable_lmdb" = yes)
 if test x"$enable_lmdb" = x"yes"; then
-	AC_SEARCH_LIBS([mdb_env_create], [lmdb], [], [
-	  AC_MSG_ERROR([unable to find mdb_env_create() function])
-	  ])
-	AC_DEFINE(LMDB, 1, [Enable Option layer])
+  AC_SEARCH_LIBS([mdb_env_create], [lmdb], [], [
+    AC_MSG_ERROR([unable to find mdb_env_create() function])
+    ])
+  AC_DEFINE(LMDB, 1, [Enable Option layer])
 fi
 
+PROGS=''
+LTLIBS=''
+AC_ARG_ENABLE(hdfs,
+  AS_HELP_STRING([--enable-hdfs],[enable hdfs support]),
+  [enable_hdfs=yes],[enable_hdfs=no])
+AM_CONDITIONAL(DHDFS, test "$enable_hdfs" = yes)
+
+AC_ARG_WITH([libhdfs],
+    [AS_HELP_STRING([--with-libhdfs=PATH], [prefix where libhdfs is installed])],
+    [hdfs_prefix=$withval], [hdfs_prefix="/usr/local"])
+if test "$hdfs_prefix" == "yes"; then
+    if test "$withval" == "yes"; then
+        cudnn_prefix="/usr/local"
+    fi
+fi
+
+if test x"$enable_hdfs" != x"no"; then
+  HDFS_CFLAGS="-I$hdfs_prefix/include"
+  HDFS_LDFLAGS="-L$hdfs_prefix/lib"
+  HDFS_LIBS="-lhdfs3"
+  LIBS="$LIBS $HDFS_LIBS"
+  LDFLAGS="$LDFLAGS $HDFS_LDFLAGS"
+  DEBUG+=" -DUSE_HDFS"
+  AC_DEFINE(DHDFS,[1],[Defined if HDFS should be used])
+  AC_CHECK_LIB([hdfs3], [main], [], [
+      AC_MSG_ERROR([unable to find hdfs3 library])
+      ])
+else
+  HDFS_CFLAGS=""
+  HDFS_LDFLAGS=""
+  HDFS_LIBS=""
+fi
+
+AC_SUBST(HDFS_CFLAGS)
+AC_SUBST(HDFS_LDFLAGS)
+AC_SUBST(HDFS_LIBS)
+
 AC_ARG_ENABLE(test,
-	AS_HELP_STRING([--enable-test],[enable singa test]),
-	[enable_test=yes],[enable_test=no])
+  AS_HELP_STRING([--enable-test],[enable singa test]),
+  [enable_test=yes],[enable_test=no])
 AM_CONDITIONAL(SINGATEST, test "$enable_test" = yes)
 if test x"$enable_test" != x"no"; then
-	PROGS='singatest test '
-	LTLIBS='libgtest.la '
+  PROGS+='singatest test '
+  LTLIBS+='libgtest.la '
 else
-	PROGS=''
-	LTLIBS=''
+  PROGS+=''
+  LTLIBS+=''
 fi
 
 AC_ARG_ENABLE(debug,
-	AS_HELP_STRING([--enable-debug],[enable debug mode]),
-	[enable_debug=yes],[enable_debug=no])
-AM_CONDITIONAL(DEBUG, test "$enable_debug" = yes)
-if test x"$enable_debug" != x"no"; then
-	DEBUG+=' -g'
+  AS_HELP_STRING([--enable-debug],[enable debug mode]),
+  [enable_debug=yes],[enable_debug=no])
+AM_CONDITIONAL(SINGADEBUG, [test "$enable_debug" = yes])
+if test x"$enable_debug" == x"yes"; then
+  DEBUG+=' -g'
 else
-	DEBUG+=' -O2'
+  DEBUG+=' -O2'
 fi
 
 AC_ARG_ENABLE(python,
@@ -188,10 +224,10 @@ if test x"$enable_python" != x"no"; then
     AC_CHECK_PROG(PY_CHECK,python,yes)
     if test x"$PY_CHECK" != x"yes"; then
         AC_MSG_ERROR([Cannot find command "python". Please intall before make.])
-    else    
+    else
         PYLIBS="-lpython`python -V 2>&1 | awk '{print substr($2,1,3)}'`"
     fi
-fi        
+fi
 AC_SUBST(PYLIBS)
 
 AC_ARG_WITH([python],
