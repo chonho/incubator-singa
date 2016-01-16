@@ -163,30 +163,5 @@ class WordPoolingLayer: public MSCNNLayer {
    int *index_;
 };
 
- /**
- * p(word at t+1 is from class c) = softmax(src[t]*Wc)[c]
- * p(w|c) = softmax(src[t]*Ww[Start(c):End(c)])
- * p(word at t+1 is w)=p(word at t+1 is from class c)*p(w|c)
- */
-class LossLayer : public MSCNNLayer {
- public:
-  ~LossLayer();
-  void Setup(const LayerProto& conf, const vector<Layer*>& srclayers) override;
-  void ComputeFeature(int flag, const vector<Layer*>& srclayers) override;
-  void ComputeGradient(int flag, const vector<Layer*>& srclayers) override;
-
-  const std::string ToString(bool debug, int flag) override;
-  const std::vector<Param*> GetParams() const override {
-    std::vector<Param*> params{word_weight_, class_weight_};
-    return params;
-  }
-
- private:
-  std::vector<Blob<float>> pword_;
-  Blob<float> pclass_;
-  Param* word_weight_, *class_weight_;
-  float loss_, ppl_;
-  int num_;
-};
 }  // namespace mscnnlm
 #endif  // EXAMPLES_MSCNNLM_MSCNNLM_H_

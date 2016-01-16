@@ -120,7 +120,7 @@ void DataLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
       break;
     }
   }
-  LOG(ERROR) << "aux_data_.at(0): " << aux_data_.at(0);
+  //LOG(ERROR) << "aux_data_.at(0): " << aux_data_.at(0);
 }
 
 
@@ -271,13 +271,13 @@ void ConcatLayer::Setup(const LayerProto& conf,
   //max_num_word_ = conf.GetExtension(data_conf).max_num_word();
   //word_dim_ = conf.GetExtension(embedding_conf).word_dim();
   kernel_ = conf.GetExtension(concat_conf).kernel();
-  LOG(ERROR) << "kernel: " << kernel_;
-  LOG(ERROR) << "word_dim_: " << word_dim_;
-  LOG(ERROR) << "max_num_word_: " << max_num_word_;
-  LOG(ERROR) << "max_word_len_: " << max_word_len_;
+  //LOG(ERROR) << "kernel: " << kernel_;
+  //LOG(ERROR) << "word_dim_: " << word_dim_;
+  //LOG(ERROR) << "max_num_word_: " << max_num_word_;
+  //LOG(ERROR) << "max_word_len_: " << max_word_len_;
   int cols = kernel_ * word_dim_;
   int bino = Binomial(max_word_len_, kernel_);
-  LOG(ERROR) << "bino: " << bino;
+  //LOG(ERROR) << "bino: " << bino;
   int rows = max_num_word_ * bino;
   LOG(ERROR) << "rows: " << rows;
   LOG(ERROR) << "cols: " << cols;
@@ -304,8 +304,8 @@ void ConcatLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
 
   LOG(ERROR) << "start concatenation";
   for (int w = 0; w < window_; w++) {
-    LOG(ERROR) << "word_index_[" << w << "]: " << word_index_[w];
-    LOG(ERROR) << "kernel_: " << kernel_;
+    //LOG(ERROR) << "word_index_[" << w << "]: " << word_index_[w];
+    //LOG(ERROR) << "kernel_: " << kernel_;
     Combinations(word_index_[w], kernel_);
     LOG(ERROR) << "set concat_index_ ok!";
     int b = Binomial(word_index_[w], kernel_);
@@ -390,8 +390,8 @@ void PoolingOverTime::Setup(const LayerProto& conf,
   int data_batchsize = srclayers[1]->data(this).shape()[0];
   max_word_len_ = srclayers[1]->data(this).count() / data_batchsize - 4;
   max_num_word_ = data_batchsize / max_word_len_;
-  LOG(ERROR) << "max_word_len_: " << max_word_len_;
-  LOG(ERROR) << "max_num_word_: " << max_num_word_;
+  //LOG(ERROR) << "max_word_len_: " << max_word_len_;
+  //LOG(ERROR) << "max_num_word_: " << max_num_word_;
 
   int conv_dim = srclayers[0]->data(this).shape().size();
   //LOG(ERROR) << "conv_dim: " << conv_dim;
@@ -401,11 +401,11 @@ void PoolingOverTime::Setup(const LayerProto& conf,
   //LOG(ERROR) << "shape[3]: " << srclayers[0]->data(this).shape()[3];
   batchsize_ = srclayers[0]->data(this).shape()[conv_dim - 2];
   vdim_ = srclayers[0]->data(this).shape()[conv_dim - 3];
-  LOG(ERROR) << "batchsize_: " << batchsize_;
-  LOG(ERROR) << "vdim_: " << vdim_;
+  //LOG(ERROR) << "batchsize_: " << batchsize_;
+  //LOG(ERROR) << "vdim_: " << vdim_;
 
   max_row_ = batchsize_ / max_num_word_;
-  LOG(ERROR) << "max_row_: " << max_row_;
+  //LOG(ERROR) << "max_row_: " << max_row_;
   // will append time from data layer
   data_.Reshape(vector<int>{1, max_num_word_, vdim_ + 1});
   grad_.ReshapeLike(data_);
@@ -507,106 +507,5 @@ void WordPoolingLayer::ComputeGradient(int flag,
     gsrc[0][i][index_[i]][0] = grad[i];
 }
 
-/*********** Implementation for LossLayer **********/
-LossLayer::~LossLayer() {
-  delete word_weight_;
-  delete class_weight_;
-}
 
-void LossLayer::Setup(const LayerProto& conf, const vector<Layer*>& srclayers) {
-  MSCNNLayer::Setup(conf, srclayers);
-  CHECK_EQ(srclayers.size(), 2);
-  const auto& src = srclayers[0]->data(this);
-  int max_window = src.shape()[0];
-  int vdim = src.count() / max_window;   // Dimension of input
-  int vocab_size = conf.GetExtension(loss_conf).vocab_size();
-  int nclass = conf.GetExtension(loss_conf).nclass();
-  word_weight_ = Param::Create(conf.param(0));
-  word_weight_->Setup(vector<int>{vocab_size, vdim});
-  class_weight_ = Param::Create(conf.param(1));
-  class_weight_->Setup(vector<int>{nclass, vdim});
-
-  pword_.resize(max_window);
-  pclass_.Reshape(vector<int>{max_window, nclass});
-}
-
-void LossLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
-  window_ = dynamic_cast<MSCNNLayer*>(srclayers[0])->window();
-  auto pclass = RTensor2(&pclass_);
-  auto src = RTensor2(srclayers[0]->mutable_data(this));
-  auto word_weight = RTensor2(word_weight_->mutable_data());
-  auto class_weight = RTensor2(class_weight_->mutable_data());
-  const float * label = srclayers[1]->data(this).cpu_data();
-
-  float loss = 0.f, ppl = 0.f;
-  for (int t = 0; t < window_; t++) {
-    // label is the next word
-    int start = static_cast<int>(label[(t + 1) * 4 + 2]);
-    int end = static_cast<int>(label[(t + 1) * 4 + 3]);
-
-    auto wordWeight = word_weight.Slice(start, end);
-    CHECK_GT(end, start);
-    pword_[t].Reshape(std::vector<int>{end-start});
-    auto pword = RTensor1(&pword_[t]);
-    pword = dot(src[t], wordWeight.T());
-    Softmax(pword, pword);
-
-    pclass[t] = dot(src[t], class_weight.T());
-    Softmax(pclass[t], pclass[t]);
-
-    int wid = static_cast<int>(label[(t + 1) * 4 + 0]);
-    int cid = static_cast<int>(label[(t + 1) * 4 + 1]);
-    CHECK_GT(end, wid);
-    CHECK_GE(wid, start);
-    loss_ += -log(std::max(pword[wid - start] * pclass[t][cid], FLT_MIN));
-    ppl_ += log10(std::max(pword[wid - start] * pclass[t][cid], FLT_MIN));
-  }
-  num_ += window_;
-}
-
-void LossLayer::ComputeGradient(int flag, const vector<Layer*>& srclayers) {
-  auto pclass = RTensor2(&pclass_);
-  auto src = RTensor2(srclayers[0]->mutable_data(this));
-  auto gsrc = RTensor2(srclayers[0]->mutable_grad(this));
-  auto word_weight = RTensor2(word_weight_->mutable_data());
-  auto gword_weight = RTensor2(word_weight_->mutable_grad());
-  auto class_weight = RTensor2(class_weight_->mutable_data());
-  auto gclass_weight = RTensor2(class_weight_->mutable_grad());
-  const float * label = srclayers[1]->data(this).cpu_data();
-  gclass_weight = 0;
-  gword_weight = 0;
-  for (int t = 0; t < window_; t++) {
-    int start = static_cast<int>(label[(t + 1) * 4 + 2]);
-    int end = static_cast<int>(label[(t + 1) * 4 + 3]);
-    int wid = static_cast<int>(label[(t + 1) * 4 + 0]);
-    int cid = static_cast<int>(label[(t + 1) * 4 + 1]);
-    auto pword = RTensor1(&pword_[t]);
-    CHECK_GT(end, wid);
-    CHECK_GE(wid, start);
-
-    // gL/gclass_act
-    pclass[t][cid] -= 1.0;
-    // gL/gword_act
-    pword[wid - start] -= 1.0;
-
-    // gL/gword_weight
-    gword_weight.Slice(start, end) += dot(pword.FlatTo2D().T(),
-                                          src[t].FlatTo2D());
-    // gL/gclass_weight
-    gclass_weight += dot(pclass[t].FlatTo2D().T(),
-                         src[t].FlatTo2D());
-
-    gsrc[t] = dot(pword, word_weight.Slice(start, end));
-    gsrc[t] += dot(pclass[t], class_weight);
-  }
-}
-
-const std::string LossLayer::ToString(bool debug, int flag) {
-  float loss = loss_ / num_;
-  float ppl = exp10(- ppl_ / num_);
-  loss_ = 0;
-  num_ = 0;
-  ppl_ = 0;
-  return "loss = " + std::to_string(loss) + ", ppl = " + std::to_string(ppl);
-}
 }   // end of namespace mscnnlm
