@@ -59,7 +59,7 @@ DataLayer::~DataLayer() {
 }
 
 void DataLayer::Setup(const LayerProto& conf, const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "Setup @ Data";
+  //LOG(ERROR) << "Setup @ Data";
   MSCNNLayer::Setup(conf, srclayers);
   string key;
   max_window_ = conf.GetExtension(data_conf).max_window();
@@ -70,7 +70,7 @@ void DataLayer::Setup(const LayerProto& conf, const vector<Layer*>& srclayers) {
   data_.Reshape(vector<int>{row, col});
   aux_data_.resize(1);
   window_ = 0;
-  LOG(ERROR) << "row, col: " << row << ", " << col;
+  //LOG(ERROR) << "row, col: " << row << ", " << col;
 }
 
 void SetInst(int k, const WordCharRecord& ch, Blob<float>* to, int max_wlen) {
@@ -93,7 +93,7 @@ void ShiftInst(int from, int to,  Blob<float>* data) {
 void DataLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
   string key, value;
   WordCharRecord ch;
-  LOG(ERROR) << "Comp @ Data -----";
+  //LOG(ERROR) << "Comp @ Data -----";
   if (store_ == nullptr) {
     store_ = singa::io::OpenStore(
         layer_conf_.GetExtension(data_conf).backend(),
@@ -111,14 +111,20 @@ void DataLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
       CHECK(store_->Read(&key, &value));
     }
     ch.ParseFromString(value);
-    if (i == 0)
-      aux_data_.at(0) = ch.label();
-    SetInst(i, ch, &data_, max_word_len_);
-
     if (ch.word_index() == -1) {
       window_ = i;
       break;
     }
+
+    if (i == 0) {
+      if (ch.label() == 18)
+        aux_data_.at(0) = 0;
+      else if (ch.label() == 189)
+        aux_data_.at(0) = 6;
+      else
+        aux_data_.at(0) = ch.label() - 180;
+    }
+    SetInst(i, ch, &data_, max_word_len_);
   }
   //LOG(ERROR) << "aux_data_.at(0): " << aux_data_.at(0);
 }
@@ -131,7 +137,7 @@ EmbeddingLayer::~EmbeddingLayer() {
 
 void EmbeddingLayer::Setup(const LayerProto& conf,
     const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "Setup @ Embed";
+  //LOG(ERROR) << "Setup @ Embed";
   MSCNNLayer::Setup(conf, srclayers);
   CHECK_EQ(srclayers.size(), 1);
   int max_window = srclayers[0]->data(this).shape()[0]; // # of unique chars in dataset (vocab_size)
@@ -141,13 +147,13 @@ void EmbeddingLayer::Setup(const LayerProto& conf,
   vocab_size_ = conf.GetExtension(embedding_conf).vocab_size();
   embed_ = Param::Create(conf.param(0));
   embed_->Setup(vector<int>{vocab_size_, word_dim_});
-  LOG(ERROR) << "data row, col: " << max_window << ", " << word_dim_;
-  LOG(ERROR) << "embd row, col: " << vocab_size_ << ", " << word_dim_;
+  //LOG(ERROR) << "data row, col: " << max_window << ", " << word_dim_;
+  //LOG(ERROR) << "embd row, col: " << vocab_size_ << ", " << word_dim_;
 }
 
 void EmbeddingLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
   auto datalayer = dynamic_cast<DataLayer*>(srclayers[0]);
-  LOG(ERROR) << "Comp @ Embed";
+  //LOG(ERROR) << "Comp @ Embed";
   window_ = datalayer->window(); // <-- # of words in patient
   auto chars = RTensor2(&data_);
   auto embed = RTensor2(embed_->mutable_data());
@@ -260,7 +266,7 @@ ConcatLayer::~ConcatLayer() {
 void ConcatLayer::Setup(const LayerProto& conf,
     const vector<Layer*>& srclayers) {
   Layer::Setup(conf, srclayers);
-  LOG(ERROR) << "Setup @ Concat";
+  //LOG(ERROR) << "Setup @ Concat";
   CHECK_EQ(srclayers.size(), 2);
   int data_batchsize = srclayers[1]->data(this).shape()[0];
   max_word_len_ = srclayers[1]->data(this).count() / data_batchsize - 4;
@@ -279,8 +285,8 @@ void ConcatLayer::Setup(const LayerProto& conf,
   int bino = Binomial(max_word_len_, kernel_);
   //LOG(ERROR) << "bino: " << bino;
   int rows = max_num_word_ * bino;
-  LOG(ERROR) << "rows: " << rows;
-  LOG(ERROR) << "cols: " << cols;
+  //LOG(ERROR) << "rows: " << rows;
+  //LOG(ERROR) << "cols: " << cols;
   data_.Reshape(vector<int>{1, rows, cols});
   grad_.ReshapeLike(data_);
   word_index_ = new int[max_num_word_];
@@ -294,7 +300,7 @@ void ConcatLayer::Setup(const LayerProto& conf,
 }
 
 void ConcatLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "CompFeature @ Concat";
+  //LOG(ERROR) << "CompFeature @ Concat";
   auto emlayer = dynamic_cast<EmbeddingLayer*>(srclayers[0]);
   window_ = emlayer->window();      // #words in a patient
   auto src_ptr = emlayer->data(this).cpu_data();
@@ -302,12 +308,12 @@ void ConcatLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
   data_.SetValue(0);
   SetIndex(srclayers);
 
-  LOG(ERROR) << "start concatenation";
+  //LOG(ERROR) << "start concatenation";
   for (int w = 0; w < window_; w++) {
     //LOG(ERROR) << "word_index_[" << w << "]: " << word_index_[w];
     //LOG(ERROR) << "kernel_: " << kernel_;
     Combinations(word_index_[w], kernel_);
-    LOG(ERROR) << "set concat_index_ ok!";
+    //LOG(ERROR) << "set concat_index_ ok!";
     int b = Binomial(word_index_[w], kernel_);
     int max = Binomial(max_word_len_, kernel_);
     for (int r = 0; r < b; r++)
@@ -316,13 +322,13 @@ void ConcatLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
          src_ptr + char_index_[w][concat_index_[r][c]] * word_dim_, word_dim_);
       }
   }
-  LOG(ERROR) << "end concatenation";
+  //LOG(ERROR) << "end concatenation";
 }
 
 void ConcatLayer::ComputeGradient(int flag, const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "ComputeGradient @ Concat";
+  //LOG(ERROR) << "ComputeGradient @ Concat";
   auto grad = Tensor3(&grad_);
-  // initialize gsrc
+  // initialize gsrc, is it correct?
   srclayers[0]->mutable_grad(this)->SetValue(0);
   auto gsrc = Tensor2(srclayers[0]->mutable_grad(this));
   auto emlayer = dynamic_cast<EmbeddingLayer*>(srclayers[0]);
@@ -335,13 +341,14 @@ void ConcatLayer::ComputeGradient(int flag, const vector<Layer*>& srclayers) {
     for (int r = 0; r < b; r++)
       for (int c = 0; c < kernel_; c++)
         for (int i = 0; i < word_dim_; i++)
-          gsrc[concat_index_[r][c]][i] += grad[0][w * max + r][c * word_dim_ + i];
+          gsrc[char_index_[w][concat_index_[r][c]]][i]
+            += grad[0][w * max + r][c * word_dim_ + i];
   }
   // use avg
   for (int w = 0; w < window_; w++) {
     for (int r = 0; r < word_index_[w]; r++)
       for (int i = 0; i < word_dim_; i++)
-        gsrc[r][i] /= (word_index_[w] - 1);
+        gsrc[w * max_word_len_ + r][i] /= word_index_[w];
   }
 }
 
@@ -383,7 +390,7 @@ PoolingOverTime::~PoolingOverTime() {
 
 void PoolingOverTime::Setup(const LayerProto& conf,
     const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "Setup @ PoolingOverTime";
+  //LOG(ERROR) << "Setup @ PoolingOverTime";
   CHECK_EQ(srclayers.size(), 2);
   MSCNNLayer::Setup(conf, srclayers);
 
@@ -418,7 +425,7 @@ void PoolingOverTime::Setup(const LayerProto& conf,
 
 void PoolingOverTime::ComputeFeature(int flag,
     const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "CompFeat @ PoolingOverTime";
+  //LOG(ERROR) << "CompFeat @ PoolingOverTime";
   auto data = Tensor3(&data_);
   auto src = Tensor4(srclayers[0]->mutable_data(this));
   auto datalayer = dynamic_cast<DataLayer*>(srclayers[1]);
@@ -448,7 +455,7 @@ void PoolingOverTime::ComputeFeature(int flag,
 
 void PoolingOverTime::ComputeGradient(int flag,
     const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "ComputeGradient @ PoolingOverTime";
+  //LOG(ERROR) << "ComputeGradient @ PoolingOverTime";
   auto grad = Tensor3(&grad_);
   srclayers[0]->mutable_grad(this)->SetValue(0);
   auto gsrc = Tensor4(srclayers[0]->mutable_grad(this));
@@ -468,7 +475,7 @@ WordPoolingLayer::~WordPoolingLayer() {
 
 void WordPoolingLayer::Setup(const LayerProto& conf,
   const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "Setup @ WordPoolingLayer";
+  //LOG(ERROR) << "Setup @ WordPoolingLayer";
   CHECK_EQ(srclayers.size(), 1);
   MSCNNLayer::Setup(conf, srclayers);
   const auto& src = srclayers[0]->data(this);
@@ -482,7 +489,7 @@ void WordPoolingLayer::Setup(const LayerProto& conf,
 
 void WordPoolingLayer::ComputeFeature(int flag,
   const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "ComputeFeature @ WordPoolingLayer";
+  //LOG(ERROR) << "ComputeFeature @ WordPoolingLayer";
   auto data = Tensor1(&data_);
   auto src = Tensor4(srclayers[0]->mutable_data(this));
   for (int i = 0; i < vdim_; i++) {
@@ -499,7 +506,7 @@ void WordPoolingLayer::ComputeFeature(int flag,
 
 void WordPoolingLayer::ComputeGradient(int flag,
   const vector<Layer*>& srclayers) {
-  LOG(ERROR) << "ComputeGradient @ WordPoolingLayer";
+  //LOG(ERROR) << "ComputeGradient @ WordPoolingLayer";
   auto grad = Tensor1(&grad_);
   srclayers[0]->mutable_grad(this)->SetValue(0);
   auto gsrc = Tensor4(srclayers[0]->mutable_grad(this));
