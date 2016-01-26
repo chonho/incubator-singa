@@ -53,3 +53,5 @@ thirdparty/*
 !thirdparty/install.sh
 !include/singa
 doc/
+example/dpm/job.conf
+example/dpm/create-shard.sh

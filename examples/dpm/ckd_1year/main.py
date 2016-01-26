@@ -4,13 +4,11 @@ import os, sys, re, time
 import csv
 
 posix_now = time.time()
-
 d = datetime.fromtimestamp(posix_now)
-vocab = {}
 
-colname = ('code','dtime','symbol','labtest')
 emr = {}
 codeid = {}
+
 
 #---------------------------
 def read_emr():
@@ -85,7 +83,11 @@ def read_dataset(op):
   read data
   '''
   #wf = csv.writer(open("dynamic.csv", "w"))
-  wf = open("dynamic.csv", "w")
+  #wf = open("dynamic.csv", "w")
+  #wf1 = open("dpm_test"+str(arg2), "w")
+  #wf2 = open("dpm_train"+str(arg2), "w")
+  wf1 = open("dpm_test", "w")
+  wf2 = open("dpm_train", "w")
   rf = open('test_remove_empty.csv', 'r')
   reader = csv.reader(rf)
   header = next(reader)
@@ -98,12 +100,12 @@ def read_dataset(op):
     et_prev = 'bl' 
     f_cnt = 0
 
-    clee = 0
+    existMMSCORE = 0
 
     for line in reader:
 
       if 'MMSCORE' in line[2]: 
-        clee = 1
+        existMMSCORE = 1
         #print int(line[0]), line[1], line[2], line[3]
 
       if pid != int(line[0]):
@@ -142,7 +144,7 @@ def read_dataset(op):
         
         if not (et in ['sc', 'nv', 'f', '']): 
           if gettime(et) >= arg1:
-            if clee == 1:
+            if existMMSCORE == 1:
               dt = gettime(et)-gettime(et_prev)
               if not pid in labelDict.keys():
                 labelDict[pid] = [dt]
@@ -155,7 +157,7 @@ def read_dataset(op):
         pid = int(line[0])
         et  = line[1]
   
-        clee = 0
+        existMMSCORE = 0
 
     # compute mu, sigma for features   
     for key, val in fvalDict.items():
@@ -165,7 +167,7 @@ def read_dataset(op):
 
   # write dynamic dataset
   if op == 2:
-
+ 
     pid = 2
     et = 'bl' 
     et_prev = 'bl' 
@@ -173,7 +175,8 @@ def read_dataset(op):
     f_idx = []
     f_val = []
     out = ''
-    i = 0
+    out2 = ''
+    nb_sample = 0
 
     for line in reader:
 
@@ -191,11 +194,17 @@ def read_dataset(op):
               #dt = len(labelDict[pid])
             if not gettime(et_prev) == -1:
               if gettime(et) < arg1:
-                out = out + prepare_dynamic(pid, gettime(et)-gettime(et_prev), f_idx, f_val, dt)
+                if nb_sample in dataRange:
+                  out = out + prepare_dynamic(pid, gettime(et)-gettime(et_prev), f_idx, f_val, dt)
+                else:
+                  out2 = out2 + prepare_dynamic(pid, gettime(et)-gettime(et_prev), f_idx, f_val, dt)
               else:
-                if 41 in f_idx:
-                  out = out + prepare_dynamic(pid, -1, f_idx, f_val, dt)
-                  print pid, int(f_val[f_idx.index(41)])
+                if 41 in f_idx: # use data with mmscore value
+                  if nb_sample in dataRange:
+                    out = out + prepare_dynamic(pid, -1, f_idx, f_val, dt)
+                  else:
+                    out2 = out2 + prepare_dynamic(pid, -1, f_idx, f_val, dt)
+                  nb_sample += 1
                 '''
                 if 41 in f_idx:
                   print pid, i, dt, int(f_val[f_idx.index(41)])
@@ -207,6 +216,7 @@ def read_dataset(op):
           pid = int(line[0])
           et_prev = et
           et  = line[1]
+
           f_idx = []
           f_val = []
 
@@ -235,14 +245,16 @@ def read_dataset(op):
         # replicate data
         if pid in labelDict.keys(): 
           for i in range(len(labelDict[pid])):
-            wf.write(out)
+            wf1.write(out)
+            wf2.write(out2)
         
         out = ''
+        out2 = ''
         pid = int(line[0])
         et = 'bl' 
         et_prev = 'bl'
-        i = 0
 
+    print '# of samples ', nb_sample
 
 def gettime(et):
   if et == 'bl':
@@ -286,17 +298,31 @@ def prepare_dynamic(pid, lt, idx, val, dt):
   ret = ret + ','.join([str(i) for i in val]) + '\n'
   return ret
 
+def datasetIndex( did, ratio ):
+  total_sample = 558
+  start = (did - 1) * int(total_sample*ratio) 
+  end = start + int(total_sample*ratio) - 1
+  if end >= total_sample: end = total_sample
+  return start, end  
 
 #main
-if len(sys.argv) > 1:
+if len(sys.argv) > 3:
   arg1 = int(sys.argv[1]) # cut point
+  arg2 = int(sys.argv[2]) # index (range id) of test data
+  arg3 = float(sys.argv[3]) # % of test data
 else:
-  arg1 = 0
+  arg1 = 28 
+  arg2 = 1
+  arg3 = 0.1 
+
+s, e = datasetIndex(arg2, arg3)
+dataRange = range(s, e+1)
 
 generate_codeid()
 write_codeid()
 print '# of codeid: ', countCode()
 print 'MMSCORE: ', codeid['MMSCORE']
+
 
 #for key, val in codeid.items(): print key, val
 read_dataset(1)
@@ -312,5 +338,4 @@ read_dataset(2)
 
 #print '# of patients: ', countPatients()
 #print '# of codeid: ', countCode()
-#print 'vocab size: ', vocabsize()
 

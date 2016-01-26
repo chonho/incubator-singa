@@ -129,10 +129,19 @@ void DataLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
         ptr[b * feature_len_ + 1] = static_cast<float>(dynamic.education());
         ptr[b * feature_len_ + 2] = static_cast<float>(dynamic.gender());
         ptr[b * feature_len_ + 3] = static_cast<float>(dynamic.lap_time());
-        for (int i=4; i<feature_len_-2; i++) {
-            ptr[b * feature_len_ + i] = static_cast<float>(dynamic.feature_value(i - 4));
-            LOG(ERROR) << "Patient ID: " << dynamic.patient_id() << " Detailed features: " << static_cast<float>(dynamic.feature_value(i - 4));
+        // all zero
+        for (int i=4; i<feature_len_-2; i++)
+           ptr[b * feature_len_ + i] = 0;
+        // except the observed
+        for (int k=0; k<dynamic.feature_value_size(); k++) {
+           int idx = dynamic.observed_idx(k);
+           ptr[b * feature_len_ + 4 + idx] = static_cast<float>(dynamic.feature_value(k));
+           LOG(ERROR) << "Patient ID: " << dynamic.patient_id() << " Detailed features: " << "(l,b)=(" << l << "," << b << ")" << static_cast<float>(dynamic.feature_value(k));
         }
+//        for (int i=4; i<feature_len_-2; i++) {
+//            ptr[b * feature_len_ + i] = static_cast<float>(dynamic.feature_value(i - 4));
+//            LOG(ERROR) << "Patient ID: " << dynamic.patient_id() << " Detailed features: " << static_cast<float>(dynamic.feature_value(i - 4));
+//        }
 
         //LOG(ERROR) << "(l,b)=(" << l << "," << b << "), pid " << static_cast<int>(dynamic.patient_id())
                                                  //<< ", lap: " << static_cast<int>(dynamic.lap_time());
@@ -256,23 +265,23 @@ void CombinationLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers)
   AXPY(1.0f, *tmp, &data_); // Combine 2 parts
   MVAddRow(bias_->data(), &data_); // Add bias
   delete tmp;
-  const float* printout = weight2_->data().cpu_data();
-  LOG(ERROR) << "Weight info: ";
-  LOG(ERROR) << "Weight info size: " << weight2_->data().shape().size();
-  LOG(ERROR) << "Weight info shape(0): " << weight2_->data().shape(0);
-  LOG(ERROR) << "Weight info shape(1): " << weight2_->data().shape(1);
-  for(int i = 0; i < weight2_->data().shape(0); i++) {
-      for(int j = 0; j < weight2_->data().shape(1); j++) {
-          LOG(ERROR) << "Weight info @ ( " << i << " , " << j << " ) is:   " << (*(printout + i * weight2_->data().shape(1) + j));
-      }
-  }
-  LOG(ERROR) << "Bias info: ";
-  LOG(ERROR) << "Bias info size: " << bias_->data().shape().size();
-  LOG(ERROR) << "Bias info shape(0): " << bias_->data().shape(0);
-  const float* printbias = bias_->data().cpu_data();
-  for(int k = 0; k < bias_->data().shape(0); k++) {
-      LOG(ERROR) << "Bias info @ " << k << " is:   " << (*(printbias + k));
-  }
+//  const float* printout = weight2_->data().cpu_data();
+//  LOG(ERROR) << "Weight info: ";
+//  LOG(ERROR) << "Weight info size: " << weight2_->data().shape().size();
+//  LOG(ERROR) << "Weight info shape(0): " << weight2_->data().shape(0);
+//  LOG(ERROR) << "Weight info shape(1): " << weight2_->data().shape(1);
+//  for(int i = 0; i < weight2_->data().shape(0); i++) {
+//      for(int j = 0; j < weight2_->data().shape(1); j++) {
+//          LOG(ERROR) << "Weight info @ ( " << i << " , " << j << " ) is:   " << (*(printout + i * weight2_->data().shape(1) + j));
+//      }
+//  }
+//  LOG(ERROR) << "Bias info: ";
+//  LOG(ERROR) << "Bias info size: " << bias_->data().shape().size();
+//  LOG(ERROR) << "Bias info shape(0): " << bias_->data().shape(0);
+//  const float* printbias = bias_->data().cpu_data();
+//  for(int k = 0; k < bias_->data().shape(0); k++) {
+//      LOG(ERROR) << "Bias info @ " << k << " is:   " << (*(printbias + k));
+//  }
   //LOG(ERROR) << "Weight info: ";
   //LOG(ERROR) << "Weight information for delta_T: " << weight2_->data();
   //LOG(ERROR) << "Bias information for delta_T: " << bias_->data();

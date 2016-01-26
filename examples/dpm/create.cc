@@ -494,20 +494,11 @@ int create_data(const char *input_file, const char *output, int ROUND) {
            dynamicRecord.set_education( edu );
            dynamicRecord.set_gender( gen );
            dynamicRecord.set_nb_sample( scnt );
-      
-           for(int k=0; k<feature_size; k++) {
-              if( i == f_idx.size() ) 
-                 fval = 0.0;
-              else {
-                 if (k == f_idx.at(i)) {
-                    dynamicRecord.add_observed_idx(k);
-                    fval = f_val.at(i++);
-                 }
-                 else
-                    fval = 0.0;
-              }
-              dynamicRecord.add_feature_value(fval);
+           for(int k=0; k<f_idx.size(); k++) {
+              dynamicRecord.add_observed_idx(f_idx.at(k));
+              dynamicRecord.add_feature_value(f_val.at(k));
            }
+
            int length = snprintf(key, BUFFER_LEN, "%05d", reccnt++);
            dynamicRecord.SerializeToString(&value);
            store->Write(string(key, length), value);
@@ -551,17 +542,6 @@ int create_data(const char *input_file, const char *output, int ROUND) {
     } 
 
   }
-
-/*
-  if ( ROUND == 1 ) {
-  // additional record for separation
-      dynamicRecord.set_patient_id( -1 );
-      int length = snprintf(key, BUFFER_LEN, "%05d", reccnt++);
-      dynamicRecord.SerializeToString(&value);
-      store->Write(string(key, length), value);
-      dynamicRecord.Clear();
-  }
-*/
 
   fclose(fin);
   store->Flush();
