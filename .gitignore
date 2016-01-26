@@ -54,4 +54,5 @@ thirdparty/*
 !include/singa
 doc/
 example/dpm/job.conf
-example/dpm/create-shard.sh
+example/dpm/ckd_1year/dpm_train
+example/dpm/ckd_1year/dpm_test

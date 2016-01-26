@@ -69,7 +69,7 @@ void DataLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
   string key2, value2;
   DynamicRecord dynamic;
   OutTimeRecord outtime;
-  LOG(ERROR) << "Comp @ Data ----------";
+  //LOG(ERROR) << "Comp @ Data ----------";
   if (store_ == nullptr) {
     store_ = singa::io::OpenStore(
         layer_conf_.GetExtension(data_conf).backend(),
@@ -136,12 +136,8 @@ void DataLayer::ComputeFeature(int flag, const vector<Layer*>& srclayers) {
         for (int k=0; k<dynamic.feature_value_size(); k++) {
            int idx = dynamic.observed_idx(k);
            ptr[b * feature_len_ + 4 + idx] = static_cast<float>(dynamic.feature_value(k));
-           LOG(ERROR) << "Patient ID: " << dynamic.patient_id() << " Detailed features: " << "(l,b)=(" << l << "," << b << ")" << static_cast<float>(dynamic.feature_value(k));
+           ////LOG(ERROR) << "Patient ID: " << dynamic.patient_id() << " Detailed features: " << "(l,b)=(" << l << "," << b << ")" << static_cast<float>(dynamic.feature_value(k));
         }
-//        for (int i=4; i<feature_len_-2; i++) {
-//            ptr[b * feature_len_ + i] = static_cast<float>(dynamic.feature_value(i - 4));
-//            LOG(ERROR) << "Patient ID: " << dynamic.patient_id() << " Detailed features: " << static_cast<float>(dynamic.feature_value(i - 4));
-//        }
 
         //LOG(ERROR) << "(l,b)=(" << l << "," << b << "), pid " << static_cast<int>(dynamic.patient_id())
                                                  //<< ", lap: " << static_cast<int>(dynamic.lap_time());

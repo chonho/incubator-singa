@@ -118,7 +118,7 @@ def read_dataset(op):
         patientDict[pid] = field 
         f_cnt = 0
         pid = int(line[0])
-  
+
       if 'None' in line or is_numeric(line[3]) == False:
         # TODO take care of missing values or categorical value
         continue
@@ -137,7 +137,6 @@ def read_dataset(op):
             fvalDict[cid] = [float(line[3])]
           else:
             fvalDict[cid].append(float(line[3]))
-
 
       # time changes
       if not et == line[1]:
@@ -322,7 +321,6 @@ generate_codeid()
 write_codeid()
 print '# of codeid: ', countCode()
 print 'MMSCORE: ', codeid['MMSCORE']
-
 
 #for key, val in codeid.items(): print key, val
 read_dataset(1)

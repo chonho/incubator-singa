@@ -100,7 +100,6 @@ int old_classes;
 int *class_start;
 int *class_end;
 int class_size;
-int feature_size;
 int cut_point;
 
 char dpm_file[MAX_STRING];
@@ -650,24 +649,6 @@ int main(int argc, char **argv) {
     test_mode = 1;
   }
 
-  // search for feature size
-  i = argPos(const_cast<char *>("-feature_size"), argc, argv);
-  if (i > 0) {
-    if (i + 1 == argc) {
-      printf("ERROR: class size not specified!\n");
-      return 0;
-    }
-
-    feature_size = atoi(argv[i + 1]);
-
-    if (debug_mode > 0)
-      printf("feature size: %d\n", feature_size);
-  }
-  if (feature_size <= 0) {
-    printf("ERROR: no or invalid feature size received!\n");
-    return 0;
-  }
-
   i = argPos(const_cast<char *>("-cut_point"), argc, argv);
   if (i > 0) {
     if (i + 1 == argc) {
@@ -680,7 +661,7 @@ int main(int argc, char **argv) {
     if (debug_mode > 0)
       printf("cut point: %d\n", cut_point);
   }
-  if (feature_size <= 0) {
+  if (cut_point <= 0) {
     printf("ERROR: no or invalid cut point received!\n");
     return 0;
   }
